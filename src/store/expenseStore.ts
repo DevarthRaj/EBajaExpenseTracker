@@ -165,7 +165,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
   updateExpense: async (id, form, billUri) => {
     set({ loading: true, error: null });
 
-    let bill_url: string | undefined = undefined;
+    let bill_url: string | null | undefined = undefined;
 
     if (billUri && billUri.startsWith('file://')) {
       bill_url = await uploadBill(billUri);

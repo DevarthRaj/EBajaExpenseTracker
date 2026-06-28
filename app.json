@@ -1,21 +1,31 @@
 {
   "expo": {
-    "name": "EBajaExpenseTracker",
+    "name": "EBaja Expense Tracker",
     "slug": "EBajaExpenseTracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow EBaja to access your photos for attaching bills.",
+          "cameraPermission": "Allow EBaja to use the camera for photographing receipts."
+        }
+      ],
+      "expo-secure-store"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ebaja.expensetracker"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#1a73e8",
+        "foregroundImage": "./assets/icon.png"
       },
+      "package": "com.ebaja.expensetracker",
       "predictiveBackGestureEnabled": false
     },
     "web": {
