@@ -9,7 +9,7 @@ import {
 import { CartesianChart, Bar, PolarChart, Pie } from 'victory-native';
 import { useExpenseStore } from '../store/expenseStore';
 import { useBudgetStore } from '../store/budgetStore';
-import { DEPARTMENTS, DEPARTMENT_COLORS, Department } from '../utils/constants';
+import { DEPARTMENTS, DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
 import { formatCurrency, groupByMonth } from '../utils/formatters';
 import { useState } from 'react';
 
@@ -44,7 +44,7 @@ export default function AnalyticsScreen() {
       .map(([label, value], i) => ({
         label,
         value,
-        color: ['#1a73e8','#f97316','#22c55e','#eab308','#a855f7','#ef4444','#14b8a6'][i % 7],
+        color: ['#1649E0','#f97316','#22c55e','#eab308','#a855f7','#ef4444','#14b8a6'][i % 7],
       }));
   }, [expenses]);
 
@@ -71,7 +71,7 @@ export default function AnalyticsScreen() {
   if (!activeBudget) {
     return (
       <View style={styles.center}>
-        <Text>No budget selected.</Text>
+        <Text style={styles.empty}>No budget selected.</Text>
       </View>
     );
   }
@@ -79,30 +79,32 @@ export default function AnalyticsScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
     >
       {/* Monthly Spend Bar Chart */}
       <Text style={styles.sectionTitle}>Monthly Spend (Last 6 Months)</Text>
       {monthlyData.some((d) => d.y > 0) ? (
-        <View style={{ height: 220, marginHorizontal: 8 }}>
-          <CartesianChart
-            data={monthlyData}
-            xKey="x"
-            yKeys={['y']}
-            axisOptions={{
-              tickCount: 6,
-              formatXLabel: (v: number) => monthLabels[v] ?? '',
-            }}
-          >
-            {({ points, chartBounds }) => (
-              <Bar
-                points={points.y}
-                chartBounds={chartBounds}
-                color="#1a73e8"
-                roundedCorners={{ topLeft: 4, topRight: 4 }}
-              />
-            )}
-          </CartesianChart>
+        <View style={styles.chartCard}>
+          <View style={{ height: 160 }}>
+            <CartesianChart
+              data={monthlyData}
+              xKey="x"
+              yKeys={['y']}
+              axisOptions={{
+                tickCount: 6,
+                formatXLabel: (v: number) => monthLabels[v] ?? '',
+              }}
+            >
+              {({ points, chartBounds }) => (
+                <Bar
+                  points={points.y}
+                  chartBounds={chartBounds}
+                  color={THEME.colors.electricBlue}
+                  roundedCorners={{ topLeft: 4, topRight: 4 }}
+                />
+              )}
+            </CartesianChart>
+          </View>
         </View>
       ) : (
         <Text style={styles.empty}>No expense data yet.</Text>
@@ -111,19 +113,19 @@ export default function AnalyticsScreen() {
       {/* Category Pie */}
       <Text style={styles.sectionTitle}>Spend by Category</Text>
       {catData.length > 0 ? (
-        <>
-          <View style={{ height: 220 }}>
+        <View style={styles.chartCard}>
+          <View style={{ height: 200 }}>
             <PolarChart
               data={catData}
               labelKey="label"
               valueKey="value"
               colorKey="color"
             >
-              <Pie.Chart innerRadius="40%">
+              <Pie.Chart innerRadius="55%">
                 {() => (
                   <>
                     <Pie.Slice />
-                    <Pie.SliceAngularInset angularInset={{ angularStrokeWidth: 2, angularStrokeColor: '#fff' }} />
+                    <Pie.SliceAngularInset angularInset={{ angularStrokeWidth: 2, angularStrokeColor: THEME.colors.deepBg }} />
                   </>
                 )}
               </Pie.Chart>
@@ -133,11 +135,11 @@ export default function AnalyticsScreen() {
             {catData.map((d) => (
               <View key={d.label} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: d.color }]} />
-                <Text style={styles.legendLabel}>{d.label}: {formatCurrency(d.value)}</Text>
+                <Text style={styles.legendLabel}>{d.label}: <Text style={{ color: '#fff', fontWeight: '700' }}>{formatCurrency(d.value)}</Text></Text>
               </View>
             ))}
           </View>
-        </>
+        </View>
       ) : (
         <Text style={styles.empty}>No data.</Text>
       )}
@@ -145,70 +147,148 @@ export default function AnalyticsScreen() {
       {/* Department Comparison Bar Chart */}
       <Text style={styles.sectionTitle}>Department Comparison</Text>
       {deptData.some((d) => d.y > 0) ? (
-        <View style={{ height: 220, marginHorizontal: 8 }}>
-          <CartesianChart
-            data={deptData}
-            xKey="x"
-            yKeys={['y']}
-            axisOptions={{
-              tickCount: DEPARTMENTS.length,
-              formatXLabel: (v: number) => DEPARTMENTS[v]?.slice(0, 4) ?? '',
-            }}
-          >
-            {({ points, chartBounds }) => (
-              <Bar
-                points={points.y}
-                chartBounds={chartBounds}
-                color="#4CAF50"
-                roundedCorners={{ topLeft: 4, topRight: 4 }}
-              />
-            )}
-          </CartesianChart>
+        <View style={styles.chartCard}>
+          <View style={{ height: 160 }}>
+            <CartesianChart
+              data={deptData}
+              xKey="x"
+              yKeys={['y']}
+              axisOptions={{
+                tickCount: DEPARTMENTS.length,
+                formatXLabel: (v: number) => DEPARTMENTS[v]?.slice(0, 4) ?? '',
+              }}
+            >
+              {({ points, chartBounds }) => (
+                <Bar
+                  points={points.y}
+                  chartBounds={chartBounds}
+                  color={THEME.colors.vibrantGreen}
+                  roundedCorners={{ topLeft: 4, topRight: 4 }}
+                />
+              )}
+            </CartesianChart>
+          </View>
+          
+          <View style={styles.legend}>
+            {DEPARTMENTS.map((d) => (
+              <View key={d} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: DEPARTMENT_COLORS[d as Department] }]} />
+                <Text style={styles.legendLabel}>{d}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : (
         <Text style={styles.empty}>No data.</Text>
       )}
 
-      {/* Dept color legend */}
-      <View style={styles.legend}>
-        {DEPARTMENTS.map((d) => (
-          <View key={d} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: DEPARTMENT_COLORS[d as Department] }]} />
-            <Text style={styles.legendLabel}>{d}</Text>
-          </View>
-        ))}
-      </View>
-
       {/* Top Spenders */}
       <Text style={styles.sectionTitle}>Top Spenders</Text>
-      {topSpenders.length === 0 ? (
-        <Text style={styles.empty}>No expenses yet.</Text>
-      ) : (
-        topSpenders.map(([name, amount], i) => (
-          <View key={name} style={styles.spenderRow}>
-            <Text style={styles.spenderRank}>#{i + 1}</Text>
-            <Text style={styles.spenderName}>{name}</Text>
-            <Text style={styles.spenderAmount}>{formatCurrency(amount)}</Text>
-          </View>
-        ))
-      )}
+      <View style={styles.spendersCard}>
+        {topSpenders.length === 0 ? (
+          <Text style={styles.empty}>No expenses yet.</Text>
+        ) : (
+          topSpenders.map(([name, amount], i) => (
+            <View key={name} style={styles.spenderRow}>
+              <Text style={styles.spenderRank}>#{i + 1}</Text>
+              <Text style={styles.spenderName}>{name}</Text>
+              <Text style={styles.spenderAmount}>{formatCurrency(amount)}</Text>
+            </View>
+          ))
+        )}
+      </View>
 
-      <View style={{ height: 32 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: 15, fontWeight: '600', paddingHorizontal: 16, marginTop: 20, marginBottom: 4 },
-  empty: { color: '#aaa', textAlign: 'center', padding: 20 },
-  legend: { paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { fontSize: 11, color: '#555' },
-  spenderRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  spenderRank: { width: 30, fontSize: 14, color: '#888' },
-  spenderName: { flex: 1, fontSize: 14, fontWeight: '600' },
-  spenderAmount: { fontSize: 14, fontWeight: '700', color: '#c62828' },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.deepBg,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 18,
+    marginTop: 20,
+    marginBottom: 8,
+    color: THEME.colors.textWhite,
+  },
+  empty: {
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    padding: 20,
+    fontSize: 13,
+  },
+  chartCard: {
+    ...THEME.styles.glassCard,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  legend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+    justifyContent: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendLabel: {
+    fontSize: 10,
+    color: THEME.colors.textBlueLight,
+  },
+  spendersCard: {
+    ...THEME.styles.glassCard,
+    marginHorizontal: 16,
+    padding: 8,
+  },
+  spenderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  spenderRank: {
+    width: 30,
+    fontSize: 14,
+    color: THEME.colors.vibrantGreen,
+    fontWeight: '700',
+  },
+  spenderName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  spenderAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.textRed,
+  },
 });

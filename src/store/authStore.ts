@@ -29,25 +29,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
 
-    // Restore existing session
-    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      // Restore existing session
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (session) {
-      await fetchAndSetUser(session, set);
-    } else {
-      set({ session: null, user: null, role: null, loading: false });
-    }
-
-    // Listen for auth state changes (token refresh, sign-out, etc.)
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        set({ session: null, user: null, role: null, loading: false });
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (session) {
         await fetchAndSetUser(session, set);
+      } else {
+        set({ session: null, user: null, role: null, loading: false });
       }
-    });
+
+      // Listen for auth state changes (token refresh, sign-out, etc.)
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          set({ session: null, user: null, role: null, loading: false });
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await fetchAndSetUser(session, set);
+        }
+      });
+    } catch (e: any) {
+      console.error('Supabase init failed:', e);
+      set({
+        session: null,
+        user: null,
+        role: null,
+        loading: false,
+        error: 'Failed to connect to Supabase. Check your URL/network.',
+      });
+    }
   },
 
   signIn: async (email: string, password: string) => {

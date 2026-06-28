@@ -3,15 +3,12 @@
 // Exports expense log + summary sheet, shared via expo-sharing
 // ============================================================
 import * as XLSX from 'xlsx';
-import { writeAsStringAsync, EncodingType } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Expense, Fund } from '../lib/supabaseTypes';
 import { formatDate } from './formatters';
 
-// Access cacheDirectory from the expo-file-system native module at runtime
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ExpoFS = require('expo-file-system/src/ExpoFileSystem').default;
-const CACHE_DIR: string = ExpoFS?.cacheDirectory ?? 'file:///tmp/';
+const CACHE_DIR: string = FileSystem.cacheDirectory ?? 'file:///tmp/';
 
 
 interface ExportOptions {
@@ -98,8 +95,8 @@ export async function exportToExcel({
   const filePath = `${CACHE_DIR}${fileName}`;
 
   const wbout = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-  await writeAsStringAsync(filePath, wbout, {
-    encoding: EncodingType.Base64,
+  await FileSystem.writeAsStringAsync(filePath, wbout, {
+    encoding: FileSystem.EncodingType.Base64,
   });
 
   const canShare = await Sharing.isAvailableAsync();

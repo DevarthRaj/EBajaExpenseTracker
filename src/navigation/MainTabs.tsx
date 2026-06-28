@@ -14,6 +14,7 @@ import AnalyticsScreen from '../screens/AnalyticsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import BudgetSwitcherScreen from '../screens/BudgetSwitcherScreen';
 import { useBudgetStore } from '../store/budgetStore';
+import { THEME } from '../utils/constants';
 
 export type MainTabParamList = {
   Summary: undefined;
@@ -36,14 +37,44 @@ export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ navigation }) => ({
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+        tabBarActiveTintColor: THEME.colors.vibrantGreen,
+        tabBarInactiveTintColor: THEME.colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: THEME.colors.deepBg,
+          borderTopWidth: 1,
+          borderTopColor: THEME.colors.glassBorder,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        headerStyle: {
+          backgroundColor: THEME.colors.deepBg,
+          shadowOpacity: 0,
+          elevation: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: THEME.colors.glassBorder,
+        },
+        headerTintColor: THEME.colors.textWhite,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 16,
+        },
         headerRight: () => (
           <TouchableOpacity
             onPress={() => navigation.navigate('Budgets')}
-            style={{ marginRight: 16 }}
+            style={{
+              marginRight: 16,
+              backgroundColor: THEME.colors.glassBg,
+              paddingVertical: 4,
+              paddingHorizontal: 12,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: THEME.colors.glassBorder,
+            }}
           >
-            <Text style={{ fontSize: 12 }} numberOfLines={1}>
-              {activeBudget?.name ?? 'No Budget'}
+            <Text style={{ fontSize: 11, fontWeight: '700', color: THEME.colors.vibrantGreen }} numberOfLines={1}>
+              ⚡ {activeBudget?.name ?? 'No Budget'}
             </Text>
           </TouchableOpacity>
         ),
@@ -63,7 +94,7 @@ export default function MainTabs() {
         <Tab.Screen
           name="AddExpense"
           component={AddExpenseScreen}
-          options={{ title: 'Add Expense' }}
+          options={{ title: 'Add' }}
         />
       )}
       <Tab.Screen

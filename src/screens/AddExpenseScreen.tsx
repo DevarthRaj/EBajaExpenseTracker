@@ -25,6 +25,7 @@ import {
   CATEGORIES,
   PAYMENT_MODES,
   SPLIT_MODES,
+  THEME,
 } from '../utils/constants';
 import { todayISODate } from '../utils/formatters';
 import {
@@ -71,7 +72,7 @@ export default function AddExpenseScreen() {
   if (role !== 'admin') {
     return (
       <View style={styles.center}>
-        <Text>You do not have permission to add expenses.</Text>
+        <Text style={styles.errorText}>You do not have permission to add expenses.</Text>
       </View>
     );
   }
@@ -133,7 +134,6 @@ export default function AddExpenseScreen() {
         splits: [{ key: 'equal', label: 'Equal Split', amount: '', people_count: '' }],
       });
     } else {
-      // member — start empty, user adds rows
       set({ split_mode: mode, splits: [] });
     }
   };
@@ -147,7 +147,6 @@ export default function AddExpenseScreen() {
   const updateSplitPeopleCount = (idx: number, value: string) => {
     const splits = [...form.splits];
     splits[idx] = { ...splits[idx], people_count: value };
-    // Auto-distribute amount
     const total = parseFloat(form.amount);
     const n = parseInt(value);
     if (!isNaN(total) && !isNaN(n) && n > 0) {
@@ -248,6 +247,7 @@ export default function AddExpenseScreen() {
         onChangeText={(v) => set({ amount: v })}
         keyboardType="numeric"
         placeholder="0.00"
+        placeholderTextColor="rgba(255,255,255,0.2)"
       />
 
       {/* Reimbursement toggle */}
@@ -256,6 +256,8 @@ export default function AddExpenseScreen() {
         <Switch
           value={form.is_reimbursement_pending}
           onValueChange={(v) => set({ is_reimbursement_pending: v })}
+          trackColor={{ false: '#767577', true: THEME.colors.electricBlue }}
+          thumbColor={form.is_reimbursement_pending ? THEME.colors.vibrantGreen : '#f4f3f4'}
         />
       </View>
 
@@ -268,18 +270,20 @@ export default function AddExpenseScreen() {
             set({ is_split: v });
             if (v) initSplits(form.split_mode);
           }}
+          trackColor={{ false: '#767577', true: THEME.colors.electricBlue }}
+          thumbColor={form.is_split ? THEME.colors.vibrantGreen : '#f4f3f4'}
         />
       </View>
 
       {/* Split mode selector */}
       {form.is_split && (
         <View style={styles.section}>
-          <Text style={styles.label}>Split Mode</Text>
+          <Text style={styles.sectionHeading}>Split Mode</Text>
           <TouchableOpacity
             style={styles.dropdown}
             onPress={() => setSplitModeOpen(!splitModeOpen)}
           >
-            <Text>
+            <Text style={{ color: '#fff' }}>
               {SPLIT_MODES.find((m) => m.value === form.split_mode)?.label ?? form.split_mode}
             </Text>
           </TouchableOpacity>
@@ -293,7 +297,7 @@ export default function AddExpenseScreen() {
                   setSplitModeOpen(false);
                 }}
               >
-                <Text>{m.label}</Text>
+                <Text style={{ color: '#fff' }}>{m.label}</Text>
               </TouchableOpacity>
             ))}
 
@@ -308,6 +312,7 @@ export default function AddExpenseScreen() {
                   onChangeText={(v) => updateSplitAmount(idx, v)}
                   keyboardType="numeric"
                   placeholder="₹0"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                 />
               </View>
             ))}
@@ -321,9 +326,10 @@ export default function AddExpenseScreen() {
                 onChangeText={(v) => updateSplitPeopleCount(0, v)}
                 keyboardType="numeric"
                 placeholder="e.g. 4"
+                placeholderTextColor="rgba(255,255,255,0.3)"
               />
               {form.splits[0]?.amount ? (
-                <Text style={styles.splitLabel}>
+                <Text style={styles.splitLabelResult}>
                   = ₹{form.splits[0].amount} each
                 </Text>
               ) : null}
@@ -343,6 +349,7 @@ export default function AddExpenseScreen() {
                       set({ splits });
                     }}
                     placeholder="Member name"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
                   />
                   <TextInput
                     style={styles.splitInput}
@@ -350,6 +357,7 @@ export default function AddExpenseScreen() {
                     onChangeText={(v) => updateSplitAmount(idx, v)}
                     keyboardType="numeric"
                     placeholder="₹0"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
                   />
                   <TouchableOpacity onPress={() => removeMemberSplit(idx)}>
                     <Text style={styles.removeText}>✕</Text>
@@ -371,6 +379,7 @@ export default function AddExpenseScreen() {
         value={form.date}
         onChangeText={(v) => set({ date: v })}
         placeholder="YYYY-MM-DD"
+        placeholderTextColor="rgba(255,255,255,0.3)"
       />
 
       {/* Paid By */}
@@ -380,6 +389,7 @@ export default function AddExpenseScreen() {
         value={form.paid_by}
         onChangeText={(v) => set({ paid_by: v })}
         placeholder="Member name"
+        placeholderTextColor="rgba(255,255,255,0.3)"
       />
 
       {/* Description */}
@@ -389,6 +399,7 @@ export default function AddExpenseScreen() {
         value={form.description}
         onChangeText={(v) => set({ description: v })}
         placeholder="Brief description"
+        placeholderTextColor="rgba(255,255,255,0.3)"
       />
 
       {/* Department */}
@@ -397,7 +408,7 @@ export default function AddExpenseScreen() {
         style={styles.dropdown}
         onPress={() => setDeptOpen(!deptOpen)}
       >
-        <Text>{form.department}</Text>
+        <Text style={{ color: '#fff' }}>{form.department}</Text>
       </TouchableOpacity>
       {deptOpen &&
         DEPARTMENTS.map((d) => (
@@ -406,7 +417,7 @@ export default function AddExpenseScreen() {
             style={styles.dropdownItem}
             onPress={() => { set({ department: d }); setDeptOpen(false); }}
           >
-            <Text>{d}</Text>
+            <Text style={{ color: '#fff' }}>{d}</Text>
           </TouchableOpacity>
         ))}
 
@@ -416,7 +427,7 @@ export default function AddExpenseScreen() {
         style={styles.dropdown}
         onPress={() => setCatOpen(!catOpen)}
       >
-        <Text>{form.category}</Text>
+        <Text style={{ color: '#fff' }}>{form.category}</Text>
       </TouchableOpacity>
       {catOpen &&
         CATEGORIES.map((c) => (
@@ -425,7 +436,7 @@ export default function AddExpenseScreen() {
             style={styles.dropdownItem}
             onPress={() => { set({ category: c }); setCatOpen(false); }}
           >
-            <Text>{c}</Text>
+            <Text style={{ color: '#fff' }}>{c}</Text>
           </TouchableOpacity>
         ))}
 
@@ -435,7 +446,7 @@ export default function AddExpenseScreen() {
         style={styles.dropdown}
         onPress={() => setModeOpen(!modeOpen)}
       >
-        <Text>{form.payment_mode}</Text>
+        <Text style={{ color: '#fff' }}>{form.payment_mode}</Text>
       </TouchableOpacity>
       {modeOpen &&
         PAYMENT_MODES.map((m) => (
@@ -444,7 +455,7 @@ export default function AddExpenseScreen() {
             style={styles.dropdownItem}
             onPress={() => { set({ payment_mode: m as PaymentMode }); setModeOpen(false); }}
           >
-            <Text>{m}</Text>
+            <Text style={{ color: '#fff' }}>{m}</Text>
           </TouchableOpacity>
         ))}
 
@@ -455,6 +466,7 @@ export default function AddExpenseScreen() {
         value={form.notes}
         onChangeText={(v) => set({ notes: v })}
         placeholder="Optional notes"
+        placeholderTextColor="rgba(255,255,255,0.3)"
         multiline
       />
 
@@ -462,10 +474,10 @@ export default function AddExpenseScreen() {
       <Text style={styles.label}>Bill / Receipt</Text>
       <View style={styles.billRow}>
         <TouchableOpacity style={styles.billBtn} onPress={pickBill}>
-          <Text>📁 Choose File</Text>
+          <Text style={{ color: THEME.colors.textBlueLight }}>📁 Choose File</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.billBtn} onPress={takeBillPhoto}>
-          <Text>📷 Take Photo</Text>
+          <Text style={{ color: THEME.colors.textBlueLight }}>📷 Take Photo</Text>
         </TouchableOpacity>
       </View>
       {billUri ? (
@@ -523,7 +535,7 @@ export default function AddExpenseScreen() {
               />
             )}
             <TouchableOpacity onPress={() => setTemplateModalVisible(false)}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelModalText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -539,6 +551,7 @@ export default function AddExpenseScreen() {
               value={templateName}
               onChangeText={setTemplateName}
               placeholder="Template name"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setSaveTemplateModalVisible(false)}>
@@ -556,65 +569,238 @@ export default function AddExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  bigLabel: { fontSize: 16, fontWeight: '700', marginTop: 8 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+    padding: 16,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.deepBg,
+  },
+  errorText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+  },
+  bigLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginTop: 8,
+  },
   bigInput: {
-    borderWidth: 2, borderColor: '#1a73e8', borderRadius: 8,
-    padding: 14, fontSize: 28, fontWeight: '700', textAlign: 'center', marginTop: 4,
+    borderWidth: 2,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    color: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
   },
-  label: { fontSize: 13, fontWeight: '600', marginTop: 14 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textWhite,
+    marginTop: 14,
+  },
   input: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
-    padding: 10, marginTop: 4, fontSize: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+    fontSize: 14,
+    color: THEME.colors.textWhite,
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
-  section: { marginTop: 8, padding: 12, borderWidth: 1, borderColor: '#eee', borderRadius: 8 },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  section: {
+    marginTop: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    borderRadius: 16,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textBlueLight,
+    marginBottom: 8,
+  },
   dropdown: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
-    padding: 10, marginTop: 4, backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   dropdownItem: {
-    padding: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(0, 10, 70, 0.8)',
   },
-  splitRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
-  splitLabel: { flex: 1, fontSize: 13 },
+  splitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  splitLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: THEME.colors.textWhite,
+  },
+  splitLabelResult: {
+    fontSize: 13,
+    color: THEME.colors.vibrantGreen,
+    fontWeight: '600',
+  },
   splitInput: {
-    flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 6,
-    padding: 8, fontSize: 13,
+    flex: 1,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#fff',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
   },
-  removeText: { color: 'red', fontSize: 16, paddingHorizontal: 4 },
-  addRowBtn: { marginTop: 8 },
-  addRowText: { color: '#1a73e8', fontSize: 13 },
-  billRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  removeText: {
+    color: THEME.colors.textRed,
+    fontSize: 16,
+    paddingHorizontal: 4,
+  },
+  addRowBtn: {
+    marginTop: 12,
+  },
+  addRowText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  billRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
   billBtn: {
-    flex: 1, padding: 12, borderWidth: 1, borderColor: '#ccc',
-    borderRadius: 8, alignItems: 'center',
+    flex: 1,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    alignItems: 'center',
   },
-  billPreview: { width: '100%', height: 180, borderRadius: 8, marginTop: 8 },
-  templateRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  billPreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  templateRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
   templateBtn: {
-    flex: 1, padding: 10, borderWidth: 1, borderColor: '#1a73e8',
-    borderRadius: 8, alignItems: 'center',
+    flex: 1,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: THEME.colors.vibrantGreen,
+    borderRadius: 12,
+    alignItems: 'center',
   },
-  templateBtnText: { color: '#1a73e8', fontSize: 13 },
+  templateBtnText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   submitBtn: {
-    backgroundColor: '#1a73e8', padding: 16, borderRadius: 10,
-    alignItems: 'center', marginTop: 24,
+    backgroundColor: THEME.colors.vibrantGreen,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    ...THEME.styles.electricGlow,
   },
-  submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  submitText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
   modalCard: {
-    backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    padding: 24, maxHeight: '70%',
+    backgroundColor: THEME.colors.deepBg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    padding: 24,
+    maxHeight: '70%',
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  templateItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  templateItemName: { fontSize: 15 },
-  emptyText: { color: '#aaa', textAlign: 'center', padding: 20 },
-  cancelText: { color: '#666', fontSize: 15, marginTop: 12, textAlign: 'center' },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 16, alignItems: 'center' },
-  saveBtn: { backgroundColor: '#1a73e8', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-  saveBtnText: { color: '#fff', fontWeight: '600' },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 12,
+  },
+  templateItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  templateItemName: {
+    fontSize: 15,
+    color: '#fff',
+  },
+  emptyText: {
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    padding: 20,
+  },
+  cancelModalText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  cancelText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    gap: 16,
+    alignItems: 'center',
+  },
+  saveBtn: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  saveBtnText: {
+    color: '#000',
+    fontWeight: '700',
+  },
 });

@@ -10,6 +10,7 @@ import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
 import { Budget } from '../lib/supabaseTypes';
 import { formatDate } from '../utils/formatters';
+import { THEME } from '../utils/constants';
 
 export default function BudgetSwitcherScreen() {
   const { budgets, activeBudget, fetchBudgets, setActiveBudget, createBudget, archiveBudget } = useBudgetStore();
@@ -100,10 +101,11 @@ export default function BudgetSwitcherScreen() {
         data={activeBudgets}
         keyExtractor={(b) => b.id}
         renderItem={renderBudget}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
         ListEmptyComponent={
           <Text style={styles.empty}>No budgets yet. Create one below.</Text>
         }
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
       />
 
       {/* Create new budget — admin only */}
@@ -125,6 +127,7 @@ export default function BudgetSwitcherScreen() {
               value={budgetName}
               onChangeText={setBudgetName}
               placeholder="e.g. Regionals 2026"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
             <Text style={styles.label}>Year</Text>
@@ -134,6 +137,7 @@ export default function BudgetSwitcherScreen() {
               onChangeText={setBudgetYear}
               keyboardType="numeric"
               placeholder="2026"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
             <View style={styles.modalActions}>
@@ -152,32 +156,161 @@ export default function BudgetSwitcherScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  userHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', backgroundColor: '#f9f9f9' },
-  userName: { fontSize: 15, fontWeight: '700' },
-  userRole: { fontSize: 12, color: '#888', marginTop: 2 },
-  signOutText: { color: 'red', fontSize: 14, fontWeight: '600' },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#666', padding: 16, paddingBottom: 8 },
-  budgetRow: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', alignItems: 'center' },
-  budgetRowActive: { backgroundColor: '#e8f0fe' },
-  budgetInfo: { flex: 1 },
-  budgetName: { fontSize: 15, fontWeight: '600' },
-  budgetNameActive: { color: '#1a73e8' },
-  budgetMeta: { fontSize: 12, color: '#888', marginTop: 2 },
-  budgetActions: { alignItems: 'flex-end', gap: 6 },
-  activeBadge: { backgroundColor: '#1a73e8', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 10 },
-  activeBadgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
-  archiveText: { color: '#e65100', fontSize: 13 },
-  empty: { color: '#aaa', textAlign: 'center', padding: 40 },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: '#1a73e8', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30 },
-  fabText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24 },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '600', marginTop: 10 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginTop: 4, fontSize: 14 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20, gap: 16, alignItems: 'center' },
-  cancelText: { color: '#666', fontSize: 15 },
-  saveBtn: { backgroundColor: '#1a73e8', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-  saveBtnText: { color: '#fff', fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  userRole: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginTop: 2,
+  },
+  signOutText: {
+    color: THEME.colors.textRed,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    padding: 16,
+    paddingBottom: 8,
+  },
+  budgetRow: {
+    ...THEME.styles.glassCard,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  budgetRowActive: {
+    borderColor: THEME.colors.electricBlue,
+    backgroundColor: 'rgba(22, 73, 224, 0.08)',
+  },
+  budgetInfo: {
+    flex: 1,
+  },
+  budgetName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  budgetNameActive: {
+    color: '#fff',
+  },
+  budgetMeta: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginTop: 4,
+  },
+  budgetActions: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  activeBadge: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  activeBadgeText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  archiveText: {
+    color: THEME.colors.textRed,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  empty: {
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    padding: 40,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    ...THEME.styles.electricGlow,
+  },
+  fabText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: THEME.colors.deepBg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textWhite,
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 4,
+    fontSize: 14,
+    color: THEME.colors.textWhite,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    gap: 16,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+  },
+  saveBtn: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  saveBtnText: {
+    color: '#000',
+    fontWeight: '700',
+  },
 });

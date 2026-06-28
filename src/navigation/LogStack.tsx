@@ -8,6 +8,8 @@ import LogScreen from '../screens/LogScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import { Expense } from '../lib/supabaseTypes';
 
+import { THEME } from '../utils/constants';
+
 export type LogStackParamList = {
   LogMain: undefined;
   EditExpense: { expense: Expense };
@@ -18,7 +20,22 @@ const Stack = createStackNavigator<LogStackParamList>();
 
 export default function LogStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: THEME.colors.deepBg,
+          shadowOpacity: 0,
+          elevation: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: THEME.colors.glassBorder,
+        },
+        headerTintColor: THEME.colors.textWhite,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 16,
+        },
+      }}
+    >
       <Stack.Screen
         name="LogMain"
         component={LogScreen}

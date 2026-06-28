@@ -1,7 +1,7 @@
 // ============================================================
 // Pending Screen — Reimbursement pending list
 // ============================================================
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
   TouchableOpacity, Alert, RefreshControl,
@@ -11,7 +11,7 @@ import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
 import { Expense } from '../lib/supabaseTypes';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { useState } from 'react';
+import { THEME } from '../utils/constants';
 
 export default function PendingScreen() {
   const { expenses, fetchExpenses, markReimbursed } = useExpenseStore();
@@ -59,7 +59,7 @@ export default function PendingScreen() {
             style={styles.reimburseBtn}
             onPress={() => handleMarkReimbursed(item)}
           >
-            <Text style={styles.reimburseBtnText}>Mark Reimbursed</Text>
+            <Text style={styles.reimburseBtnText}>Reimburse</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -76,28 +76,97 @@ export default function PendingScreen() {
         data={pending}
         keyExtractor={(e) => e.id}
         renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
         ListEmptyComponent={
           <Text style={styles.empty}>No pending reimbursements. 🎉</Text>
         }
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { padding: 16, backgroundColor: '#fff3e0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700' },
-  headerCount: { fontSize: 14, color: '#e65100', fontWeight: '600' },
-  item: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', alignItems: 'flex-start' },
-  itemLeft: { flex: 1 },
-  itemRight: { alignItems: 'flex-end' },
-  desc: { fontSize: 14, fontWeight: '600' },
-  meta: { fontSize: 12, color: '#888', marginTop: 2 },
-  dept: { fontSize: 11, color: '#666', marginTop: 4 },
-  amount: { fontSize: 16, fontWeight: '700', color: '#c62828' },
-  reimburseBtn: { marginTop: 8, backgroundColor: '#2e7d32', padding: 8, borderRadius: 6 },
-  reimburseBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  empty: { textAlign: 'center', color: '#aaa', padding: 40, fontSize: 15 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  header: {
+    padding: 16,
+    backgroundColor: 'rgba(255, 152, 0, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 152, 0, 0.2)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFB74D',
+  },
+  headerCount: {
+    fontSize: 13,
+    color: '#FF9800',
+    fontWeight: '700',
+    backgroundColor: 'rgba(255, 152, 0, 0.15)',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  item: {
+    ...THEME.styles.glassCard,
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  itemLeft: {
+    flex: 1,
+  },
+  itemRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  desc: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  meta: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginTop: 4,
+  },
+  dept: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    marginTop: 6,
+    letterSpacing: 0.5,
+  },
+  amount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.textRed,
+    marginBottom: 8,
+  },
+  reimburseBtn: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  reimburseBtnText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  empty: {
+    textAlign: 'center',
+    color: THEME.colors.textMuted,
+    padding: 40,
+    fontSize: 14,
+  },
 });

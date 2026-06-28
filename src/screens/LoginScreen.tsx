@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { THEME } from '../utils/constants';
 
 export default function LoginScreen() {
   const { signIn, loading, error, clearError } = useAuthStore();
@@ -43,6 +44,7 @@ export default function LoginScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="you@example.com"
+          placeholderTextColor="rgba(255, 255, 255, 0.3)"
           autoCapitalize="none"
           keyboardType="email-address"
           textContentType="emailAddress"
@@ -55,6 +57,7 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
+          placeholderTextColor="rgba(255, 255, 255, 0.3)"
           secureTextEntry
           textContentType="password"
           autoComplete="password"
@@ -85,29 +88,66 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.deepBg,
   },
-  card: { gap: 8 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: '600', marginTop: 8 },
+  card: {
+    ...THEME.styles.glassCard,
+    padding: 24,
+    gap: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: THEME.colors.textBlueLight,
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textWhite,
+    marginTop: 8,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
     padding: 12,
     fontSize: 15,
     marginTop: 4,
+    color: THEME.colors.textWhite,
   },
   button: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: THEME.colors.vibrantGreen,
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
+    ...THEME.styles.electricGlow,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: 'red', fontSize: 13, marginTop: 8 },
-  hint: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: 16 },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  error: {
+    color: THEME.colors.textRed,
+    fontSize: 13,
+    marginTop: 8,
+  },
+  hint: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    textAlign: 'center',
+    marginTop: 16,
+  },
 });

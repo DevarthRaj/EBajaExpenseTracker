@@ -12,6 +12,7 @@ import { useAuthStore } from '../store/authStore';
 import { Budget } from '../lib/supabaseTypes';
 import { formatDate } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
+import { THEME } from '../utils/constants';
 
 interface BudgetStats {
   expense_count: number;
@@ -62,10 +63,8 @@ export default function HistoryScreen() {
     ]);
   };
 
-  // Navigate to the budget's log — switch active budget temporarily
   const handleViewOrEdit = (budget: Budget) => {
     setActiveBudget(budget);
-    // Navigate to Log tab — the log will show this budget's data
     navigation.navigate('Log');
   };
 
@@ -90,11 +89,11 @@ export default function HistoryScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statVal}>₹{stats.total_spent.toLocaleString('en-IN')}</Text>
-              <Text style={styles.statLbl}>Total Spent</Text>
+              <Text style={styles.statLbl}>Spent</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statVal}>₹{stats.total_funds.toLocaleString('en-IN')}</Text>
-              <Text style={styles.statLbl}>Total Funds</Text>
+              <Text style={styles.statLbl}>Funds</Text>
             </View>
           </View>
         )}
@@ -120,7 +119,7 @@ export default function HistoryScreen() {
         keyExtractor={(b) => b.id}
         renderItem={renderBudget}
         contentContainerStyle={{ padding: 16, gap: 12 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No archived budgets.</Text>
@@ -133,24 +132,115 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  budgetCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  budgetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  budgetName: { fontSize: 17, fontWeight: '700', flex: 1 },
-  archivedBadge: { backgroundColor: '#fef3c7', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8 },
-  archivedText: { fontSize: 11, color: '#92400e', fontWeight: '600' },
-  budgetYear: { fontSize: 13, color: '#888', marginTop: 4 },
-  budgetDate: { fontSize: 12, color: '#aaa', marginTop: 2 },
-  statsRow: { flexDirection: 'row', marginTop: 12, gap: 4 },
-  statItem: { flex: 1, alignItems: 'center', backgroundColor: '#f9f9f9', padding: 8, borderRadius: 8 },
-  statVal: { fontSize: 13, fontWeight: '700' },
-  statLbl: { fontSize: 10, color: '#888', marginTop: 2 },
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  viewBtn: { flex: 2, backgroundColor: '#1a73e8', padding: 10, borderRadius: 8, alignItems: 'center' },
-  viewBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  unarchiveBtn: { flex: 1, borderWidth: 1, borderColor: '#2e7d32', padding: 10, borderRadius: 8, alignItems: 'center' },
-  unarchiveBtnText: { color: '#2e7d32', fontSize: 13 },
-  empty: { padding: 40, alignItems: 'center' },
-  emptyText: { fontSize: 15, color: '#aaa' },
-  emptyHint: { fontSize: 12, color: '#ccc', marginTop: 8 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  budgetCard: {
+    ...THEME.styles.glassCard,
+    marginBottom: 12,
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  budgetName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    flex: 1,
+  },
+  archivedBadge: {
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 152, 0, 0.2)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  archivedText: {
+    fontSize: 10,
+    color: '#FFB74D',
+    fontWeight: '700',
+  },
+  budgetYear: {
+    fontSize: 13,
+    color: THEME.colors.textBlueLight,
+    marginTop: 6,
+  },
+  budgetDate: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 14,
+    gap: 8,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    padding: 8,
+    borderRadius: 12,
+  },
+  statVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  statLbl: {
+    fontSize: 10,
+    color: THEME.colors.textBlueLight,
+    marginTop: 2,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  viewBtn: {
+    flex: 2,
+    backgroundColor: THEME.colors.electricBlue,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  viewBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  unarchiveBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: THEME.colors.vibrantGreen,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: 'rgba(22, 224, 76, 0.05)',
+  },
+  unarchiveBtnText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  empty: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: THEME.colors.textMuted,
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginTop: 8,
+    textAlign: 'center',
+  },
 });

@@ -19,19 +19,17 @@ import { CartesianChart, Line, PolarChart, Pie } from 'victory-native';
 import { useExpenseStore } from '../store/expenseStore';
 import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
-import { DEPARTMENTS, DEPARTMENT_COLORS, Department } from '../utils/constants';
+import { DEPARTMENTS, DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
 import { formatCurrency, groupByWeek, lastNWeekLabels } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
 import { DepartmentLimit } from '../lib/supabaseTypes';
 
 type BreakdownMode = 'department' | 'category' | 'funds';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 export default function SummaryScreen() {
   const { expenses, funds, fetchExpenses, fetchFunds } = useExpenseStore();
   const { activeBudget } = useBudgetStore();
-  const { role } = useAuthStore();
+  const { role, user } = useAuthStore();
   const isAdmin = role === 'admin';
 
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('department');
@@ -88,7 +86,6 @@ export default function SummaryScreen() {
   // Spending velocity (last 6 weeks)
   const weekSums = useMemo(() => groupByWeek(expenses, 6), [expenses]);
   const weekLabels = useMemo(() => lastNWeekLabels(6), []);
-  // CartesianChart needs data as array of objects with x and y
   const velocityData = weekSums.map((y, x) => ({ x, y }));
 
   // Department spend
@@ -116,13 +113,13 @@ export default function SummaryScreen() {
       return Object.entries(catMap).map(([label, value], i) => ({
         label,
         value,
-        color: ['#1a73e8','#f97316','#22c55e','#eab308','#a855f7','#ef4444','#14b8a6'][i % 7],
+        color: ['#1649E0','#f97316','#22c55e','#eab308','#a855f7','#ef4444','#14b8a6'][i % 7],
       }));
     } else {
       return funds.map((f, i) => ({
         label: f.contributor_name,
         value: f.amount,
-        color: ['#4CAF50','#2196F3','#FF9800','#9C27B0','#F44336'][i % 5],
+        color: ['#16E04C','#2196F3','#FF9800','#9C27B0','#F44336'][i % 5],
       }));
     }
   }, [breakdownMode, expenses, funds, deptSpend]);
@@ -152,23 +149,65 @@ export default function SummaryScreen() {
   if (!activeBudget) {
     return (
       <View style={styles.center}>
-        <Text>No budget selected. Go to Budgets tab to create one.</Text>
+        <Text style={styles.emptyText}>No budget selected. Go to Budgets tab to create one.</Text>
       </View>
     );
   }
 
+  // Welcome message based on local time
+  const getGreeting = () => {
+    const hrs = new Date().getHours();
+    if (hrs < 12) return 'Good morning! ☀️';
+    if (hrs < 18) return 'Good afternoon! 🌤️';
+    return 'Good evening! 👋';
+  };
+
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
     >
+      {/* Welcome Top Header */}
+      <View style={styles.userHeader}>
+        <View>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.userName}>{user?.name ?? 'Alex Kim'}</Text>
+        </View>
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {(user?.name ?? 'A').charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
       {/* Budget Balance */}
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Team Fund Balance</Text>
+        <Text style={styles.balanceLabel}>Total Balance</Text>
         <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
-        <Text style={styles.balanceSub}>
-          {formatCurrency(totalFunds)} collected · {formatCurrency(totalSpent)} spent
-        </Text>
+        
+        <View style={styles.pillsRow}>
+          {/* Income Pill */}
+          <View style={styles.pill}>
+            <View style={[styles.pillIconBg, { backgroundColor: 'rgba(22, 224, 76, 0.2)' }]}>
+              <Text style={{ color: THEME.colors.vibrantGreen, fontSize: 10 }}>↓</Text>
+            </View>
+            <View>
+              <Text style={styles.pillTitle}>COLLECTED</Text>
+              <Text style={styles.pillValue}>{formatCurrency(totalFunds)}</Text>
+            </View>
+          </View>
+          
+          {/* Expenses Pill */}
+          <View style={styles.pill}>
+            <View style={[styles.pillIconBg, { backgroundColor: 'rgba(248, 113, 113, 0.2)' }]}>
+              <Text style={{ color: THEME.colors.textRed, fontSize: 10 }}>↑</Text>
+            </View>
+            <View>
+              <Text style={styles.pillTitle}>SPENT</Text>
+              <Text style={styles.pillValue}>{formatCurrency(totalSpent)}</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
       {/* Stat Cards */}
@@ -178,28 +217,30 @@ export default function SummaryScreen() {
         <StatCard label="Bills Attached" value={String(billsCount)} />
       </View>
 
-      {/* Spending Velocity — CartesianChart + Line */}
+      {/* Spending Velocity */}
       <Text style={styles.sectionTitle}>Spending Velocity (Last 6 Weeks)</Text>
       {velocityData.some((d) => d.y > 0) ? (
-        <View style={{ height: 200, marginHorizontal: 8 }}>
-          <CartesianChart
-            data={velocityData}
-            xKey="x"
-            yKeys={['y']}
-            axisOptions={{
-              tickCount: 6,
-              formatXLabel: (v: number) => weekLabels[v] ?? '',
-            }}
-          >
-            {({ points }) => (
-              <Line
-                points={points.y}
-                color="#1a73e8"
-                strokeWidth={2}
-                animate={{ type: 'timing', duration: 300 }}
-              />
-            )}
-          </CartesianChart>
+        <View style={styles.chartCard}>
+          <View style={{ height: 160 }}>
+            <CartesianChart
+              data={velocityData}
+              xKey="x"
+              yKeys={['y']}
+              axisOptions={{
+                tickCount: 6,
+                formatXLabel: (v: number) => weekLabels[v] ?? '',
+              }}
+            >
+              {({ points }) => (
+                <Line
+                  points={points.y}
+                  color={THEME.colors.vibrantGreen}
+                  strokeWidth={2}
+                  animate={{ type: 'timing', duration: 300 }}
+                />
+              )}
+            </CartesianChart>
+          </View>
         </View>
       ) : (
         <Text style={styles.emptyText}>No spending data yet.</Text>
@@ -214,33 +255,40 @@ export default function SummaryScreen() {
           </TouchableOpacity>
         )}
       </View>
-      {DEPARTMENTS.map((dept) => {
-        const spent = deptSpend[dept] ?? 0;
-        const limit = deptLimits.find((l) => l.department === dept)?.limit_amount ?? 0;
-        const pct = limit > 0 ? Math.min(spent / limit, 1) : 0;
-        return (
-          <View key={dept} style={styles.deptRow}>
-            <Text style={styles.deptName}>{dept}</Text>
-            <Text style={styles.deptAmount}>{formatCurrency(spent)}</Text>
-            <View style={styles.barBg}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${limit > 0 ? pct * 100 : 0}%`,
-                    backgroundColor: DEPARTMENT_COLORS[dept as Department],
-                  },
-                ]}
-              />
+      
+      <View style={styles.deptCardContainer}>
+        {DEPARTMENTS.map((dept) => {
+          const spent = deptSpend[dept] ?? 0;
+          const limit = deptLimits.find((l) => l.department === dept)?.limit_amount ?? 0;
+          const pct = limit > 0 ? Math.min(spent / limit, 1) : 0;
+          return (
+            <View key={dept} style={styles.deptRow}>
+              <View style={styles.deptInfoRow}>
+                <Text style={styles.deptName}>{dept}</Text>
+                <View style={styles.deptRightAlign}>
+                  <Text style={styles.deptAmount}>{formatCurrency(spent)}</Text>
+                  {limit > 0 && (
+                    <Text style={[styles.deptLimit, pct >= 1 && { color: THEME.colors.textRed }]}>
+                      / {formatCurrency(limit)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.barBg}>
+                <View
+                  style={[
+                    styles.barFill,
+                    {
+                      width: `${limit > 0 ? pct * 100 : 0}%`,
+                      backgroundColor: DEPARTMENT_COLORS[dept as Department],
+                    },
+                  ]}
+                />
+              </View>
             </View>
-            {limit > 0 && (
-              <Text style={[styles.deptLimit, pct >= 1 && { color: 'red' }]}>
-                / {formatCurrency(limit)}
-              </Text>
-            )}
-          </View>
-        );
-      })}
+          );
+        })}
+      </View>
 
       {/* Breakdown Toggle */}
       <View style={styles.sectionHeader}>
@@ -262,39 +310,39 @@ export default function SummaryScreen() {
 
       {/* Pie chart using PolarChart + Pie */}
       {breakdownData.length > 0 ? (
-        <View style={{ height: 260 }}>
-          <PolarChart
-            data={breakdownData}
-            labelKey="label"
-            valueKey="value"
-            colorKey="color"
-          >
-            <Pie.Chart innerRadius="50%">
-              {({ slice }) => (
-                <>
-                  <Pie.Slice />
-                  <Pie.SliceAngularInset angularInset={{ angularStrokeWidth: 2, angularStrokeColor: '#fff' }} />
-                </>
-              )}
-            </Pie.Chart>
-          </PolarChart>
+        <View style={styles.breakdownCard}>
+          <View style={{ height: 200 }}>
+            <PolarChart
+              data={breakdownData}
+              labelKey="label"
+              valueKey="value"
+              colorKey="color"
+            >
+              <Pie.Chart innerRadius="60%">
+                {({ slice }) => (
+                  <>
+                    <Pie.Slice />
+                    <Pie.SliceAngularInset angularInset={{ angularStrokeWidth: 2, angularStrokeColor: THEME.colors.deepBg }} />
+                  </>
+                )}
+              </Pie.Chart>
+            </PolarChart>
+          </View>
+          
+          {/* Breakdown legend */}
+          <View style={styles.legendContainer}>
+            {breakdownData.map((d) => (
+              <View key={d.label} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: d.color }]} />
+                <Text style={styles.legendLabel} numberOfLines={1}>
+                  {d.label}: <Text style={{ color: '#fff', fontWeight: '700' }}>{formatCurrency(d.value)}</Text>
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : (
         <Text style={styles.emptyText}>No data for this breakdown.</Text>
-      )}
-
-      {/* Breakdown legend */}
-      {breakdownData.length > 0 && (
-        <View style={styles.legend}>
-          {breakdownData.map((d) => (
-            <View key={d.label} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: d.color }]} />
-              <Text style={styles.legendLabel} numberOfLines={1}>
-                {d.label}: {formatCurrency(d.value)}
-              </Text>
-            </View>
-          ))}
-        </View>
       )}
 
       {/* Set Limits Modal */}
@@ -302,7 +350,7 @@ export default function SummaryScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Set Department Limits</Text>
-            <ScrollView>
+            <ScrollView style={{ maxHeight: 300 }}>
               {DEPARTMENTS.map((dept) => (
                 <View key={dept} style={styles.limitRow}>
                   <Text style={styles.limitLabel}>{dept}</Text>
@@ -314,6 +362,7 @@ export default function SummaryScreen() {
                     }
                     keyboardType="numeric"
                     placeholder="0"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
                   />
                 </View>
               ))}
@@ -330,7 +379,7 @@ export default function SummaryScreen() {
         </View>
       </Modal>
 
-      <View style={{ height: 32 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -345,43 +394,323 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  balanceCard: { padding: 24, alignItems: 'center', backgroundColor: '#f5f5f5', margin: 16, borderRadius: 12 },
-  balanceLabel: { fontSize: 14, color: '#666' },
-  balanceAmount: { fontSize: 36, fontWeight: '700', marginVertical: 4 },
-  balanceSub: { fontSize: 12, color: '#888' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 16, marginBottom: 8 },
-  statCard: { alignItems: 'center', padding: 12, flex: 1, margin: 4, backgroundColor: '#f9f9f9', borderRadius: 8 },
-  statValue: { fontSize: 22, fontWeight: '700' },
-  statLabel: { fontSize: 11, color: '#666', textAlign: 'center' },
-  sectionTitle: { fontSize: 15, fontWeight: '600', paddingHorizontal: 16, marginTop: 16, marginBottom: 4 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
-  linkText: { color: '#1a73e8', fontSize: 13 },
-  deptRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 },
-  deptName: { width: 80, fontSize: 12 },
-  deptAmount: { width: 80, fontSize: 12, textAlign: 'right' },
-  barBg: { flex: 1, height: 8, backgroundColor: '#eee', borderRadius: 4, marginHorizontal: 8, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 4 },
-  deptLimit: { fontSize: 11, color: '#888', width: 70 },
-  toggleRow: { flexDirection: 'row', marginRight: 16, marginTop: 8 },
-  toggleBtn: { paddingVertical: 4, paddingHorizontal: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 16, marginLeft: 4 },
-  toggleBtnActive: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  toggleText: { fontSize: 12, color: '#666' },
-  toggleTextActive: { color: '#fff' },
-  emptyText: { textAlign: 'center', color: '#aaa', marginVertical: 24 },
-  legend: { paddingHorizontal: 16, paddingBottom: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  legendLabel: { fontSize: 12, flex: 1 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
-  limitRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  limitLabel: { flex: 1, fontSize: 14 },
-  limitInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: 100, textAlign: 'right' },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 16 },
-  cancelText: { color: '#666', fontSize: 15 },
-  saveBtn: { backgroundColor: '#1a73e8', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-  saveBtnText: { color: '#fff', fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  greeting: {
+    fontSize: 13,
+    color: THEME.colors.textBlueLight,
+    fontWeight: '300',
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.glassBg,
+    borderWidth: 1,
+    borderColor: 'rgba(22, 224, 76, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: THEME.colors.vibrantGreen,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  balanceCard: {
+    ...THEME.styles.glassCard,
+    ...THEME.styles.electricGlow,
+    margin: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  balanceLabel: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  balanceAmount: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 20,
+    letterSpacing: -1,
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  pill: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pillIconBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillTitle: {
+    fontSize: 8,
+    color: THEME.colors.textMuted,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  pillValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  statCard: {
+    ...THEME.styles.glassCard,
+    alignItems: 'center',
+    padding: 12,
+    flex: 1,
+    margin: 4,
+    borderRadius: 16,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: THEME.colors.textBlueLight,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 18,
+    marginTop: 20,
+    marginBottom: 8,
+    color: THEME.colors.textWhite,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 18,
+  },
+  linkText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  chartCard: {
+    ...THEME.styles.glassCard,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  deptCardContainer: {
+    ...THEME.styles.glassCard,
+    marginHorizontal: 16,
+    padding: 20,
+    gap: 16,
+  },
+  deptRow: {
+    width: '100%',
+  },
+  deptInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  deptName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textWhite,
+  },
+  deptRightAlign: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deptAmount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  deptLimit: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginLeft: 4,
+  },
+  barBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    marginRight: 16,
+    marginTop: 12,
+  },
+  toggleBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 16,
+    marginLeft: 4,
+  },
+  toggleBtnActive: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    borderColor: THEME.colors.vibrantGreen,
+  },
+  toggleText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+  },
+  toggleTextActive: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  breakdownCard: {
+    ...THEME.styles.glassCard,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    padding: 16,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+    justifyContent: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendLabel: {
+    fontSize: 10,
+    color: THEME.colors.textBlueLight,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: THEME.colors.textMuted,
+    marginVertical: 24,
+    fontSize: 13,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: THEME.colors.deepBg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 20,
+  },
+  limitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  limitLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.colors.textWhite,
+  },
+  limitInput: {
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    color: THEME.colors.textWhite,
+    borderRadius: 8,
+    padding: 8,
+    width: 100,
+    textAlign: 'right',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    gap: 16,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+  },
+  saveBtn: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  saveBtnText: {
+    color: '#000',
+    fontWeight: '700',
+  },
 });

@@ -10,6 +10,7 @@ import { useExpenseStore } from '../store/expenseStore';
 import { ExpenseEdit } from '../lib/supabaseTypes';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { LogStackParamList } from '../navigation/LogStack';
+import { THEME } from '../utils/constants';
 
 type HistoryRouteProp = RouteProp<LogStackParamList, 'ExpenseHistory'>;
 
@@ -31,7 +32,7 @@ export default function ExpenseHistoryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={THEME.colors.vibrantGreen} />
       </View>
     );
   }
@@ -100,21 +101,74 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  title: { fontSize: 16, fontWeight: '700' },
-  subtitle: { fontSize: 13, color: '#888', marginTop: 4 },
-  editCard: {
-    backgroundColor: '#fff', borderRadius: 10, padding: 14,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
   },
-  editHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  editLabel: { fontSize: 13, fontWeight: '700', color: '#1a73e8' },
-  editTime: { fontSize: 11, color: '#888' },
-  editSubtitle: { fontSize: 12, color: '#666', marginBottom: 8, fontStyle: 'italic' },
-  row: { flexDirection: 'row', marginBottom: 4 },
-  rowLabel: { width: 110, fontSize: 12, color: '#888' },
-  rowValue: { flex: 1, fontSize: 12 },
-  emptyText: { color: '#aaa', fontSize: 14, textAlign: 'center' },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  header: {
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.glassBorder,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: THEME.colors.textBlueLight,
+    marginTop: 4,
+  },
+  editCard: {
+    ...THEME.styles.glassCard,
+  },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  editLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.vibrantGreen,
+  },
+  editTime: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  editSubtitle: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  rowLabel: {
+    width: 110,
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+  },
+  rowValue: {
+    flex: 1,
+    fontSize: 12,
+    color: THEME.colors.textWhite,
+  },
+  emptyText: {
+    color: THEME.colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });

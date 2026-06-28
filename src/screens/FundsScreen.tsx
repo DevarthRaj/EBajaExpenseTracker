@@ -18,6 +18,7 @@ import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate, todayISODate } from '../utils/formatters';
 import { Fund } from '../lib/supabaseTypes';
+import { THEME } from '../utils/constants';
 
 export default function FundsScreen() {
   const { funds, fetchFunds, addFund, deleteFund, loading } = useExpenseStore();
@@ -71,7 +72,7 @@ export default function FundsScreen() {
         {item.notes ? <Text style={styles.fundNotes}>{item.notes}</Text> : null}
       </View>
       <View style={styles.fundRight}>
-        <Text style={styles.fundAmount}>{formatCurrency(item.amount)}</Text>
+        <Text style={styles.fundAmount}>+{formatCurrency(item.amount)}</Text>
         {isAdmin && (
           <TouchableOpacity onPress={() => handleDelete(item)}>
             <Text style={styles.deleteText}>Delete</Text>
@@ -93,11 +94,11 @@ export default function FundsScreen() {
         data={funds}
         keyExtractor={(f) => f.id}
         renderItem={renderFund}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
         ListEmptyComponent={
           <Text style={styles.empty}>No fund contributions yet.</Text>
         }
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: 16, paddingTop: 8 }}
       />
 
       {/* FAB — admin only */}
@@ -122,6 +123,7 @@ export default function FundsScreen() {
               value={form.contributor_name}
               onChangeText={(v) => setForm((f) => ({ ...f, contributor_name: v }))}
               placeholder="e.g. Rahul Sharma"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
             <Text style={styles.label}>Amount (₹) *</Text>
@@ -131,6 +133,7 @@ export default function FundsScreen() {
               onChangeText={(v) => setForm((f) => ({ ...f, amount: v }))}
               keyboardType="numeric"
               placeholder="0.00"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
             <Text style={styles.label}>Date</Text>
@@ -139,6 +142,7 @@ export default function FundsScreen() {
               value={form.date}
               onChangeText={(v) => setForm((f) => ({ ...f, date: v }))}
               placeholder="YYYY-MM-DD"
+              placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
             <Text style={styles.label}>Notes</Text>
@@ -147,6 +151,7 @@ export default function FundsScreen() {
               value={form.notes}
               onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
               placeholder="Optional notes"
+              placeholderTextColor="rgba(255,255,255,0.3)"
               multiline
             />
 
@@ -172,55 +177,124 @@ export default function FundsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { padding: 20, backgroundColor: '#f5f5f5', alignItems: 'center' },
-  headerLabel: { fontSize: 13, color: '#666' },
-  headerAmount: { fontSize: 28, fontWeight: '700', marginTop: 4 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.deepBg,
+  },
+  header: {
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.glassBorder,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headerLabel: {
+    fontSize: 13,
+    color: THEME.colors.textMuted,
+    fontWeight: '500',
+  },
+  headerAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginTop: 4,
+    letterSpacing: -0.5,
+  },
   fundItem: {
+    ...THEME.styles.glassCard,
     flexDirection: 'row',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  fundLeft: { flex: 1 },
-  fundRight: { alignItems: 'flex-end' },
-  fundName: { fontSize: 15, fontWeight: '600' },
-  fundDate: { fontSize: 12, color: '#888', marginTop: 2 },
-  fundNotes: { fontSize: 12, color: '#aaa', marginTop: 4 },
-  fundAmount: { fontSize: 16, fontWeight: '700', color: '#2e7d32' },
-  deleteText: { color: 'red', fontSize: 12, marginTop: 6 },
-  empty: { textAlign: 'center', color: '#aaa', padding: 40 },
+  fundLeft: {
+    flex: 1,
+  },
+  fundRight: {
+    alignItems: 'flex-end',
+  },
+  fundName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+  },
+  fundDate: {
+    fontSize: 12,
+    color: THEME.colors.textBlueLight,
+    marginTop: 2,
+  },
+  fundNotes: {
+    fontSize: 12,
+    color: THEME.colors.textMuted,
+    marginTop: 4,
+  },
+  fundAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.vibrantGreen,
+  },
+  deleteText: {
+    color: THEME.colors.textRed,
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  empty: {
+    textAlign: 'center',
+    color: THEME.colors.textMuted,
+    padding: 40,
+    fontSize: 14,
+  },
   fab: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: '#1a73e8',
+    backgroundColor: THEME.colors.vibrantGreen,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 30,
+    ...THEME.styles.electricGlow,
   },
-  fabText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  fabText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 15,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    backgroundColor: THEME.colors.deepBg,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
     padding: 24,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '600', marginTop: 10 },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.textWhite,
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.colors.textWhite,
+    marginTop: 12,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: THEME.colors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
     padding: 10,
     marginTop: 4,
     fontSize: 14,
+    color: THEME.colors.textWhite,
   },
   modalActions: {
     flexDirection: 'row',
@@ -229,12 +303,18 @@ const styles = StyleSheet.create({
     gap: 16,
     alignItems: 'center',
   },
-  cancelText: { color: '#666', fontSize: 15 },
+  cancelText: {
+    color: THEME.colors.textMuted,
+    fontSize: 15,
+  },
   saveBtn: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: THEME.colors.vibrantGreen,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  saveBtnText: { color: '#fff', fontWeight: '600' },
+  saveBtnText: {
+    color: '#000',
+    fontWeight: '700',
+  },
 });
