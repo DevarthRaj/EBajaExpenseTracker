@@ -19,7 +19,7 @@ import { CartesianChart, Line, PolarChart, Pie } from 'victory-native';
 import { useExpenseStore } from '../store/expenseStore';
 import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
-import { DEPARTMENTS, DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
+import { DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
 import { formatCurrency, groupByWeek, lastNWeekLabels } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
 import { DepartmentLimit } from '../lib/supabaseTypes';
@@ -27,7 +27,7 @@ import { DepartmentLimit } from '../lib/supabaseTypes';
 type BreakdownMode = 'department' | 'category' | 'funds';
 
 export default function SummaryScreen() {
-  const { expenses, funds, fetchExpenses, fetchFunds } = useExpenseStore();
+  const { expenses, funds, departments, fetchExpenses, fetchFunds, fetchConfig } = useExpenseStore();
   const { activeBudget } = useBudgetStore();
   const { role, user } = useAuthStore();
   const isAdmin = role === 'admin';
@@ -43,6 +43,7 @@ export default function SummaryScreen() {
       fetchExpenses(activeBudget.id);
       fetchFunds(activeBudget.id);
       fetchLimits(activeBudget.id);
+      fetchConfig();
     }
   }, [activeBudget?.id]);
 
@@ -100,10 +101,10 @@ export default function SummaryScreen() {
   // Breakdown pie data
   const breakdownData = useMemo(() => {
     if (breakdownMode === 'department') {
-      return DEPARTMENTS.map((d) => ({
+      return departments.map((d) => ({
         label: d,
         value: deptSpend[d] ?? 0,
-        color: DEPARTMENT_COLORS[d as Department],
+        color: DEPARTMENT_COLORS[d as Department] ?? '#1649E0',
       })).filter((d) => d.value > 0);
     } else if (breakdownMode === 'category') {
       const catMap: Record<string, number> = {};
@@ -257,7 +258,7 @@ export default function SummaryScreen() {
       </View>
       
       <View style={styles.deptCardContainer}>
-        {DEPARTMENTS.map((dept) => {
+        {departments.map((dept) => {
           const spent = deptSpend[dept] ?? 0;
           const limit = deptLimits.find((l) => l.department === dept)?.limit_amount ?? 0;
           const pct = limit > 0 ? Math.min(spent / limit, 1) : 0;
@@ -280,7 +281,7 @@ export default function SummaryScreen() {
                     styles.barFill,
                     {
                       width: `${limit > 0 ? pct * 100 : 0}%`,
-                      backgroundColor: DEPARTMENT_COLORS[dept as Department],
+                      backgroundColor: DEPARTMENT_COLORS[dept as Department] ?? '#1649E0',
                     },
                   ]}
                 />
@@ -351,7 +352,7 @@ export default function SummaryScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Set Department Limits</Text>
             <ScrollView style={{ maxHeight: 300 }}>
-              {DEPARTMENTS.map((dept) => (
+              {departments.map((dept) => (
                 <View key={dept} style={styles.limitRow}>
                   <Text style={styles.limitLabel}>{dept}</Text>
                   <TextInput

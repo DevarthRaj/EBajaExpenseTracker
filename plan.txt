@@ -1,0 +1,117 @@
+# EBaja Expense Tracker — Implementation Plan
+
+This plan details the changes to restructure the bottom tabs, implement dynamic departments/categories, add fund top-up logic, integrate budget limit warning alerts, and transform the History page into a member ledger showing contributions vs spending.
+
+---
+
+## Proposed Changes
+
+### 1. Database Schema Extensions (`supabase/schema.sql`)
+
+We need to add dynamic support for departments and categories, and enforce uniqueness for contributors within a budget:
+
+#### [NEW] Categories & Departments Tables
+```sql
+CREATE TABLE IF NOT EXISTS public.departments (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT UNIQUE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.categories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT UNIQUE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Seed defaults
+INSERT INTO public.departments (name) VALUES 
+  ('Powertrain'), ('Steering & Suspension'), ('Brakes'), ('Chassis & Body'), ('Electronics'), ('Management & Marketing'), ('Other')
+  ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO public.categories (name) VALUES 
+  ('Parts & Materials'), ('Tools & Equipment'), ('Travel & Fuel'), ('Registration & Fees'), ('Food & Catering'), ('Marketing & Print'), ('Other')
+  ON CONFLICT (name) DO NOTHING;
+```
+
+#### [MODIFY] Funds Unique Constraint
+To support the single-row topup logic per contributor:
+```sql
+-- Enforce unique contributor name per budget
+ALTER TABLE public.funds ADD CONSTRAINT unique_contributor_per_budget UNIQUE (budget_id, contributor_name);
+```
+
+#### RLS Rules for Setup Tables
+- authenticated: SELECT allowed
+- admin role: INSERT, UPDATE, DELETE allowed
+
+---
+
+### 2. Tab Restructuring & Renaming (`src/navigation/MainTabs.tsx`)
+- **[RENAME]** The **Add** tab becomes the **Expense** tab.
+- **[REMOVE]** Delete the **Pending** tab.
+- **[NEW]** Add the **Setup** tab (`ManageCategoriesDeptsScreen.tsx`) for admins to manage categories and departments.
+- Updated admin tabs: `['Summary', 'Funds', 'Expense', 'Log', 'Analytics', 'History', 'Budgets', 'Members', 'Setup']`.
+
+---
+
+### 3. Component & Screen Changes
+
+#### [MODIFY] [FundsScreen.tsx](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/screens/FundsScreen.tsx)
+- Each contributor name appears only once per budget.
+- For each contributor item in the list, add a **"Topup"** button (admin only).
+- Tapping **"Topup"** opens a modal where admins can add a numeric topup amount.
+- Submitting the topup calls a Supabase upsert/update which aggregates: `amount = amount + topup_amount`.
+- If an admin clicks `+ Add Fund`, it checks if the contributor already exists. If yes, it prompts them to top up instead of inserting a duplicate.
+
+#### [MODIFY] [AddExpenseScreen.tsx](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/screens/AddExpenseScreen.tsx)
+- Fetch departments and categories dynamically from the database (`public.departments` and `public.categories`) instead of using hardcoded constants.
+- Fetch `department_limits` for the selected department.
+- When an admin saves an expense, check:
+  `spent_in_dept + new_amount > limit_amount`.
+- If exceeded, trigger a warning: `Alert.alert('Budget Exceeded', 'Saving this expense will exceed the budget limit for the [Department] department.')`, but allow saving.
+
+#### [NEW] [ManageCategoriesDeptsScreen.tsx](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/screens/ManageCategoriesDeptsScreen.tsx)
+- Admin-only configuration page.
+- Lists all departments and categories with a delete (`❌`) button next to each.
+- Includes inputs at the top of each list to add a new category or department.
+- Writes changes directly to `public.categories` and `public.departments`.
+
+#### [MODIFY] [HistoryScreen.tsx](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/screens/HistoryScreen.tsx)
+- Change this page to show a **Member Ledger**:
+  - Displays a dropdown budget selector at the top (defaults to the currently active budget).
+  - Fetches and displays a list of all registered team members from `public.users`.
+  - For each user, aggregates and displays:
+    1. **Total Contributed**: Sum of funds in the selected budget where `contributor_name` matches the user's name.
+    2. **Total Spent**: Sum of expenses in the selected budget where `paid_by` matches the user's name.
+    3. **Net Balance**: `Total Contributed - Total Spent` (green text if positive, red text if negative).
+
+#### [MODIFY] [constants.ts](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/utils/constants.ts)
+- Replace static `DEPARTMENTS` and `CATEGORIES` arrays with dynamic getters or load them into state inside store managers so that screens pull live options.
+
+#### [DELETE] [PendingScreen.tsx](file:///d:/Unfinished%20Projects/EBajaExpenseTracker/src/screens/PendingScreen.tsx)
+- Remove this file entirely.
+
+---
+
+## Verification Plan
+
+### Dynamic Setup & Categories
+- Add a new department "Aerodynamics" on the Setup page. Confirm it appears immediately in the Add Expense department selector.
+- Delete category "Food". Confirm it disappears.
+
+### Topup Logic
+- Add contribution for "Rahul" of ₹500.
+- Try to add "Rahul" again → verify it prompts to use topup.
+- Tap **Topup** on "Rahul" and add ₹300. Confirm his entry shows ₹800 and his name appears only once in the list.
+
+### Budget Overrun Warning
+- Set Powertrain limit to ₹1,000.
+- Add an expense in Powertrain for ₹1,200. Verify the alert pops up with the budget overrun warning.
+
+### Ledger Verification
+- In the History tab, verify the list of users is populated.
+- If user "Amit" contributed ₹5,000 and paid for ₹3,000 of expenses, check that he displays:
+  - Contributed: ₹5,000
+  - Spent: ₹3,000
+  - Net: +₹2,000 (Green)

@@ -9,7 +9,7 @@ import SummaryScreen from '../screens/SummaryScreen';
 import FundsScreen from '../screens/FundsScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen';
 import LogStack from './LogStack';
-import PendingScreen from '../screens/PendingScreen';
+import ManageCategoriesDeptsScreen from '../screens/ManageCategoriesDeptsScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import BudgetSwitcherScreen from '../screens/BudgetSwitcherScreen';
@@ -22,7 +22,7 @@ export type MainTabParamList = {
   Funds: undefined;
   AddExpense: undefined;
   Log: undefined;
-  Pending: undefined;
+  Setup: undefined;
   Analytics: undefined;
   History: undefined;
   Budgets: undefined;
@@ -38,8 +38,8 @@ export default function MainTabs() {
 
   // Order of tabs for cycling navigation
   const tabsList: (keyof MainTabParamList)[] = isAdmin
-    ? ['Summary', 'Funds', 'AddExpense', 'Log', 'Pending', 'Analytics', 'History', 'Budgets', 'Members']
-    : ['Summary', 'Funds', 'Log', 'Pending', 'Analytics', 'History', 'Budgets'];
+    ? ['Summary', 'Funds', 'AddExpense', 'Log', 'Analytics', 'History', 'Budgets', 'Members', 'Setup']
+    : ['Summary', 'Funds', 'Log', 'Analytics', 'History', 'Budgets'];
 
   // Map of tab names to emojis
   const tabEmojis: Record<keyof MainTabParamList, string> = {
@@ -47,7 +47,7 @@ export default function MainTabs() {
     Funds: '🪙',
     AddExpense: '💸',
     Log: '📋',
-    Pending: '⏳',
+    Setup: '⚙️',
     Analytics: '📈',
     History: '🗄️',
     Budgets: '⚡',
@@ -142,18 +142,13 @@ export default function MainTabs() {
         <Tab.Screen
           name="AddExpense"
           component={AddExpenseScreen}
-          options={{ title: 'Add' }}
+          options={{ title: 'Expense' }}
         />
       )}
       <Tab.Screen
         name="Log"
         component={LogStack}
         options={{ title: 'Log', headerShown: false }}
-      />
-      <Tab.Screen
-        name="Pending"
-        component={PendingScreen}
-        options={{ title: 'Pending' }}
       />
       <Tab.Screen
         name="Analytics"
@@ -175,6 +170,13 @@ export default function MainTabs() {
           name="Members"
           component={MembersScreen}
           options={{ title: 'Members' }}
+        />
+      )}
+      {isAdmin && (
+        <Tab.Screen
+          name="Setup"
+          component={ManageCategoriesDeptsScreen}
+          options={{ title: 'Setup' }}
         />
       )}
     </Tab.Navigator>

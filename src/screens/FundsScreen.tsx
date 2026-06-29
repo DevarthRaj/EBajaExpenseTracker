@@ -21,12 +21,16 @@ import { Fund } from '../lib/supabaseTypes';
 import { THEME } from '../utils/constants';
 
 export default function FundsScreen() {
-  const { funds, fetchFunds, addFund, deleteFund, loading } = useExpenseStore();
+  const { funds, fetchFunds, addFund, topupFund, deleteFund, loading } = useExpenseStore();
   const { activeBudget } = useBudgetStore();
   const { role } = useAuthStore();
   const isAdmin = role === 'admin';
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [topupModalVisible, setTopupModalVisible] = useState(false);
+  const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
+  const [topupAmount, setTopupAmount] = useState('');
+  
   const [form, setForm] = useState({
     contributor_name: '',
     amount: '',
@@ -61,6 +65,29 @@ export default function FundsScreen() {
       Alert.alert('Error', 'Please enter a valid amount greater than 0.');
       return;
     }
+
+    const existing = funds.find(
+      (f) => f.contributor_name.toLowerCase() === form.contributor_name.trim().toLowerCase()
+    );
+
+    if (existing) {
+      Alert.alert(
+        'Contributor Exists',
+        `"${form.contributor_name.trim()}" has already contributed. Do you want to top up their entry instead?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Top Up',
+            onPress: async () => {
+              await addFund(activeBudget.id, form);
+              setModalVisible(false);
+              setForm({ contributor_name: '', amount: '', date: todayISODate(), notes: '' });
+            },
+          },
+        ]
+      );
+      return;
+    }
     
     await addFund(activeBudget.id, {
       ...form,
@@ -68,6 +95,19 @@ export default function FundsScreen() {
     });
     setModalVisible(false);
     setForm({ contributor_name: '', amount: '', date: todayISODate(), notes: '' });
+  };
+
+  const handleTopupSubmit = async () => {
+    if (!selectedFund || !topupAmount) return;
+    const amt = parseFloat(topupAmount);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+    await topupFund(selectedFund.id, amt);
+    setTopupModalVisible(false);
+    setTopupAmount('');
+    setSelectedFund(null);
   };
 
   const handleDelete = (fund: Fund) => {
@@ -81,15 +121,20 @@ export default function FundsScreen() {
     <View style={styles.fundItem}>
       <View style={styles.fundLeft}>
         <Text style={styles.fundName}>{item.contributor_name}</Text>
-        <Text style={styles.fundDate}>{formatDate(item.date)}</Text>
+        <Text style={styles.fundDate}>Last active: {formatDate(item.date)}</Text>
         {item.notes ? <Text style={styles.fundNotes}>{item.notes}</Text> : null}
       </View>
       <View style={styles.fundRight}>
         <Text style={styles.fundAmount}>+{formatCurrency(item.amount)}</Text>
         {isAdmin && (
-          <TouchableOpacity onPress={() => handleDelete(item)}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </TouchableOpacity>
+          <View style={styles.fundActionsRow}>
+            <TouchableOpacity onPress={() => { setSelectedFund(item); setTopupModalVisible(true); }}>
+              <Text style={styles.topupText}>Topup</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDelete(item)}>
+              <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </View>
@@ -193,6 +238,38 @@ export default function FundsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Topup Fund Modal */}
+      <Modal visible={topupModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Top Up Contribution</Text>
+            <Text style={styles.label}>Top Up amount for {selectedFund?.contributor_name} (₹) *</Text>
+            <TextInput
+              style={styles.input}
+              value={topupAmount}
+              onChangeText={setTopupAmount}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => { setTopupModalVisible(false); setSelectedFund(null); setTopupAmount(''); }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, loading && { opacity: 0.6 }]}
+                onPress={handleTopupSubmit}
+                disabled={loading}
+              >
+                <Text style={styles.saveBtnText}>
+                  {loading ? 'Saving…' : 'Top Up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -258,8 +335,17 @@ const styles = StyleSheet.create({
   deleteText: {
     color: THEME.colors.textRed,
     fontSize: 12,
-    marginTop: 6,
     fontWeight: '600',
+  },
+  topupText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fundActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
   },
   empty: {
     textAlign: 'center',

@@ -9,22 +9,28 @@ import {
 import { CartesianChart, Bar, PolarChart, Pie } from 'victory-native';
 import { useExpenseStore } from '../store/expenseStore';
 import { useBudgetStore } from '../store/budgetStore';
-import { DEPARTMENTS, DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
+import { DEPARTMENT_COLORS, Department, THEME } from '../utils/constants';
 import { formatCurrency, groupByMonth } from '../utils/formatters';
 import { useState } from 'react';
 
 export default function AnalyticsScreen() {
-  const { expenses, fetchExpenses } = useExpenseStore();
+  const { expenses, departments, fetchExpenses, fetchConfig } = useExpenseStore();
   const { activeBudget } = useBudgetStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (activeBudget) fetchExpenses(activeBudget.id);
+    if (activeBudget) {
+      fetchExpenses(activeBudget.id);
+      fetchConfig();
+    }
   }, [activeBudget?.id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    if (activeBudget) await fetchExpenses(activeBudget.id);
+    if (activeBudget) {
+      await fetchExpenses(activeBudget.id);
+      await fetchConfig();
+    }
     setRefreshing(false);
   };
 
@@ -50,12 +56,12 @@ export default function AnalyticsScreen() {
 
   // Department comparison for bar chart
   const deptData = useMemo(() => {
-    return DEPARTMENTS.map((d, i) => ({
+    return departments.map((d, i) => ({
       x: i,
       y: expenses.filter((e) => e.department === d).reduce((s, e) => s + e.amount, 0),
       dept: d,
     }));
-  }, [expenses]);
+  }, [expenses, departments]);
 
   // Top spenders
   const topSpenders = useMemo(() => {
@@ -154,8 +160,8 @@ export default function AnalyticsScreen() {
               xKey="x"
               yKeys={['y']}
               axisOptions={{
-                tickCount: DEPARTMENTS.length,
-                formatXLabel: (v: number) => DEPARTMENTS[v]?.slice(0, 4) ?? '',
+                tickCount: departments.length,
+                formatXLabel: (v: number) => departments[v]?.slice(0, 4) ?? '',
               }}
             >
               {({ points, chartBounds }) => (
@@ -170,9 +176,9 @@ export default function AnalyticsScreen() {
           </View>
           
           <View style={styles.legend}>
-            {DEPARTMENTS.map((d) => (
+            {departments.map((d) => (
               <View key={d} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: DEPARTMENT_COLORS[d as Department] }]} />
+                <View style={[styles.legendDot, { backgroundColor: DEPARTMENT_COLORS[d as Department] ?? '#1649E0' }]} />
                 <Text style={styles.legendLabel}>{d}</Text>
               </View>
             ))}

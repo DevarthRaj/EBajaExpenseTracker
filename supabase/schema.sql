@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS public.funds (
   date              DATE NOT NULL DEFAULT CURRENT_DATE,
   notes             TEXT,
   created_by        UUID REFERENCES public.users(id),
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (budget_id, contributor_name)
 );
 
 -- ─── EXPENSES ────────────────────────────────────────────────
@@ -101,6 +102,20 @@ CREATE TABLE IF NOT EXISTS public.expense_edits (
   edited_by       UUID REFERENCES public.users(id),
   edited_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   previous_data   JSONB NOT NULL   -- snapshot of the expense row before edit
+);
+
+-- ─── DYNAMIC DEPARTMENTS ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.departments (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT UNIQUE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── DYNAMIC CATEGORIES ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.categories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT UNIQUE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ─── TRIGGER: auto-stamp updated_at on expenses ──────────────
@@ -230,9 +245,27 @@ CREATE POLICY "Templates: admin delete"
 
 -- ── EXPENSE EDITS (audit trail) ──────────────────────────────
 -- Everyone can read audit history; inserts happen via SECURITY DEFINER trigger
-CREATE POLICY "ExpenseEdits: authenticated read"
-  ON public.expense_edits FOR SELECT TO authenticated USING (true);
 -- No direct INSERT policy — only the trigger function inserts (SECURITY DEFINER)
+
+-- ── DEPARTMENTS ──────────────────────────────────────────────
+CREATE POLICY "Departments: authenticated read"
+  ON public.departments FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Departments: admin insert"
+  ON public.departments FOR INSERT TO authenticated WITH CHECK (is_admin());
+CREATE POLICY "Departments: admin update"
+  ON public.departments FOR UPDATE TO authenticated USING (is_admin());
+CREATE POLICY "Departments: admin delete"
+  ON public.departments FOR DELETE TO authenticated USING (is_admin());
+
+-- ── CATEGORIES ───────────────────────────────────────────────
+CREATE POLICY "Categories: authenticated read"
+  ON public.categories FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Categories: admin insert"
+  ON public.categories FOR INSERT TO authenticated WITH CHECK (is_admin());
+CREATE POLICY "Categories: admin update"
+  ON public.categories FOR UPDATE TO authenticated USING (is_admin());
+CREATE POLICY "Categories: admin delete"
+  ON public.categories FOR DELETE TO authenticated USING (is_admin());
 
 -- ═══════════════════════════════════════════════════════════════
 -- STORAGE
@@ -272,3 +305,12 @@ CREATE POLICY "Bills: admin delete"
 
 -- Create a default budget to get started
 -- INSERT INTO public.budgets (name, year) VALUES ('Budget 2025', '2025');
+
+-- Seed dynamic categories and departments
+INSERT INTO public.departments (name) VALUES 
+  ('Powertrain'), ('Steering & Suspension'), ('Brakes'), ('Chassis & Body'), ('Electronics'), ('Management & Marketing'), ('Other')
+  ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO public.categories (name) VALUES 
+  ('Parts & Materials'), ('Tools & Equipment'), ('Travel & Fuel'), ('Registration & Fees'), ('Food & Catering'), ('Marketing & Print'), ('Other')
+  ON CONFLICT (name) DO NOTHING;

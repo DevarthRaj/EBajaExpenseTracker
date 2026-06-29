@@ -3,6 +3,7 @@
 // Manages expenses, funds, and all write operations
 // ============================================================
 import { create } from 'zustand';
+import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import {
   Expense,
@@ -18,6 +19,8 @@ interface ExpenseState {
   expenses: Expense[];
   funds: Fund[];
   templates: Template[];
+  departments: string[];
+  categories: string[];
   loading: boolean;
   error: string | null;
 
@@ -25,6 +28,13 @@ interface ExpenseState {
   fetchExpenses: (budgetId: string) => Promise<void>;
   fetchFunds: (budgetId: string) => Promise<void>;
   fetchTemplates: () => Promise<void>;
+  fetchConfig: () => Promise<void>;
+
+  // Dynamic Config Actions
+  addDepartment: (name: string) => Promise<void>;
+  deleteDepartment: (name: string) => Promise<void>;
+  addCategory: (name: string) => Promise<void>;
+  deleteCategory: (name: string) => Promise<void>;
 
   // Expenses
   addExpense: (
@@ -44,6 +54,7 @@ interface ExpenseState {
 
   // Funds
   addFund: (budgetId: string, form: FundFormData) => Promise<void>;
+  topupFund: (id: string, additionalAmount: number) => Promise<void>;
   deleteFund: (id: string) => Promise<void>;
 
   // Templates
@@ -57,6 +68,8 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
   expenses: [],
   funds: [],
   templates: [],
+  departments: [],
+  categories: [],
   loading: false,
   error: null,
 
@@ -98,6 +111,53 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
 
     if (!error) {
       set({ templates: data as Template[] });
+    }
+  },
+
+  fetchConfig: async () => {
+    const [{ data: depts }, { data: cats }] = await Promise.all([
+      supabase.from('departments').select('name').order('name'),
+      supabase.from('categories').select('name').order('name'),
+    ]);
+    set({
+      departments: depts?.map((d) => d.name) ?? [],
+      categories: cats?.map((c) => c.name) ?? [],
+    });
+  },
+
+  addDepartment: async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const { error } = await supabase.from('departments').insert({ name: trimmed });
+    if (!error) {
+      set((state) => ({ departments: [...state.departments, trimmed].sort() }));
+    } else {
+      Alert.alert('Error', 'Department already exists or failed to add.');
+    }
+  },
+
+  deleteDepartment: async (name: string) => {
+    const { error } = await supabase.from('departments').delete().eq('name', name);
+    if (!error) {
+      set((state) => ({ departments: state.departments.filter((d) => d !== name) }));
+    }
+  },
+
+  addCategory: async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const { error } = await supabase.from('categories').insert({ name: trimmed });
+    if (!error) {
+      set((state) => ({ categories: [...state.categories, trimmed].sort() }));
+    } else {
+      Alert.alert('Error', 'Category already exists or failed to add.');
+    }
+  },
+
+  deleteCategory: async (name: string) => {
+    const { error } = await supabase.from('categories').delete().eq('name', name);
+    if (!error) {
+      set((state) => ({ categories: state.categories.filter((c) => c !== name) }));
     }
   },
 
@@ -274,16 +334,73 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
 
   addFund: async (budgetId: string, form: FundFormData) => {
     set({ loading: true, error: null });
+    
+    // Check if contributor already exists for this budget (case-insensitive check)
+    const existing = get().funds.find(
+      (f) => f.contributor_name.toLowerCase() === form.contributor_name.trim().toLowerCase()
+    );
+
+    if (existing) {
+      // Direct update: add the new amount to the old one
+      const newAmount = existing.amount + parseFloat(form.amount);
+      const { data, error } = await supabase
+        .from('funds')
+        .update({
+          amount: newAmount,
+          date: form.date,
+          notes: form.notes ? `${existing.notes ? existing.notes + '; ' : ''}${form.notes}` : existing.notes
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        set({ loading: false, error: error.message });
+        return;
+      }
+
+      set((state) => ({
+        funds: state.funds.map((f) => (f.id === existing.id ? (data as Fund) : f)),
+        loading: false,
+      }));
+    } else {
+      // Normal Insert
+      const { data, error } = await supabase
+        .from('funds')
+        .insert({
+          budget_id: budgetId,
+          contributor_name: form.contributor_name.trim(),
+          amount: parseFloat(form.amount),
+          date: form.date,
+          notes: form.notes || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        set({ loading: false, error: error.message });
+        return;
+      }
+
+      set((state) => ({
+        funds: [data as Fund, ...state.funds],
+        loading: false,
+      }));
+    }
+  },
+
+  topupFund: async (id: string, additionalAmount: number) => {
+    set({ loading: true, error: null });
+    const existing = get().funds.find((f) => f.id === id);
+    if (!existing) {
+      set({ loading: false, error: 'Fund record not found' });
+      return;
+    }
 
     const { data, error } = await supabase
       .from('funds')
-      .insert({
-        budget_id: budgetId,
-        contributor_name: form.contributor_name,
-        amount: parseFloat(form.amount),
-        date: form.date,
-        notes: form.notes || null,
-      })
+      .update({ amount: existing.amount + additionalAmount })
+      .eq('id', id)
       .select()
       .single();
 
@@ -293,7 +410,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     }
 
     set((state) => ({
-      funds: [data as Fund, ...state.funds],
+      funds: state.funds.map((f) => (f.id === id ? (data as Fund) : f)),
       loading: false,
     }));
   },

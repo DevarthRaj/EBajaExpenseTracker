@@ -21,8 +21,6 @@ import { useExpenseStore } from '../store/expenseStore';
 import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
 import {
-  DEPARTMENTS,
-  CATEGORIES,
   PAYMENT_MODES,
   SPLIT_MODES,
   THEME,
@@ -42,13 +40,13 @@ import { LogStackParamList } from '../navigation/LogStack';
 
 type EditExpenseRouteProp = RouteProp<LogStackParamList, 'EditExpense'>;
 
-const defaultForm = (): ExpenseFormData => ({
+const defaultForm = (dept?: string, cat?: string): ExpenseFormData => ({
   amount: '',
   date: todayISODate(),
   paid_by: '',
   description: '',
-  department: DEPARTMENTS[0],
-  category: CATEGORIES[0],
+  department: dept ?? '',
+  category: cat ?? '',
   payment_mode: 'Cash',
   notes: '',
   bill_uri: null,
@@ -64,8 +62,17 @@ export default function AddExpenseScreen() {
   const editExpense: Expense | undefined = (route.params as any)?.expense;
   const isEditMode = !!editExpense;
 
-  const { addExpense, updateExpense, templates, fetchTemplates, saveTemplate, loading } =
-    useExpenseStore();
+  const {
+    addExpense,
+    updateExpense,
+    templates,
+    fetchTemplates,
+    saveTemplate,
+    loading,
+    departments,
+    categories,
+    fetchConfig,
+  } = useExpenseStore();
   const { activeBudget } = useBudgetStore();
   const { role } = useAuthStore();
 
@@ -78,7 +85,7 @@ export default function AddExpenseScreen() {
     );
   }
 
-  const [form, setForm] = useState<ExpenseFormData>(defaultForm());
+  const [form, setForm] = useState<ExpenseFormData>(defaultForm(departments[0], categories[0]));
   const [billUri, setBillUri] = useState<string | null>(null);
   const [templateModalVisible, setTemplateModalVisible] = useState(false);
   const [saveTemplateModalVisible, setSaveTemplateModalVisible] = useState(false);
@@ -87,6 +94,7 @@ export default function AddExpenseScreen() {
   // Dropdown states
   const [members, setMembers] = useState<string[]>([]);
   const [paidByOpen, setPaidByOpen] = useState(false);
+  const [deptLimits, setDeptLimits] = useState<any[]>([]);
 
   // Dropdowns
   const [deptOpen, setDeptOpen] = useState(false);
@@ -96,6 +104,7 @@ export default function AddExpenseScreen() {
 
   useEffect(() => {
     fetchTemplates();
+    fetchConfig();
     
     // Load members for Paid By dropdown selector
     const fetchMembers = async () => {
@@ -109,6 +118,32 @@ export default function AddExpenseScreen() {
     };
     fetchMembers();
   }, []);
+
+  // Fetch department limits for warning
+  useEffect(() => {
+    if (activeBudget) {
+      const fetchLimits = async () => {
+        const { data } = await supabase
+          .from('department_limits')
+          .select('*')
+          .eq('budget_id', activeBudget.id);
+        if (data) {
+          setDeptLimits(data);
+        }
+      };
+      fetchLimits();
+    }
+  }, [activeBudget?.id]);
+
+  // Set default values once config loaded
+  useEffect(() => {
+    if (departments.length > 0 && !form.department) {
+      set({ department: departments[0] });
+    }
+    if (categories.length > 0 && !form.category) {
+      set({ category: categories[0] });
+    }
+  }, [departments, categories]);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -139,7 +174,7 @@ export default function AddExpenseScreen() {
 
   const initSplits = (mode: SplitMode) => {
     if (mode === 'department') {
-      const splits: SplitEntry[] = DEPARTMENTS.map((d) => ({
+      const splits: SplitEntry[] = departments.map((d) => ({
         key: d,
         label: d,
         amount: '',
@@ -250,6 +285,28 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    // Check budget overrun for department limits
+    const deptSpent = useExpenseStore.getState().expenses
+      .filter((e) => e.department === form.department && e.id !== editExpense?.id)
+      .reduce((sum, e) => sum + e.amount, 0);
+    
+    const limitObj = deptLimits.find((l) => l.department === form.department);
+    const limitAmt = limitObj ? limitObj.limit_amount : 0;
+
+    if (limitAmt > 0 && deptSpent + amt > limitAmt) {
+      const proceed = await new Promise((resolve) => {
+        Alert.alert(
+          'Budget Exceeded',
+          `Saving this expense of ₹${amt.toLocaleString('en-IN')} will exceed the budget limit for the "${form.department}" department.\n\nLimit: ₹${limitAmt.toLocaleString('en-IN')}\nAlready Spent: ₹${deptSpent.toLocaleString('en-IN')}\n\nDo you want to proceed anyway?`,
+          [
+            { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
+            { text: 'Proceed', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!proceed) return;
+    }
+
     if (isEditMode && editExpense) {
       await updateExpense(editExpense.id, form, billUri);
     } else {
@@ -260,7 +317,7 @@ export default function AddExpenseScreen() {
       if (isEditMode) {
         navigation.goBack();
       } else {
-        setForm(defaultForm());
+        setForm(defaultForm(departments[0], categories[0]));
         setBillUri(null);
         Alert.alert('Success', 'Expense saved!');
       }
@@ -468,7 +525,7 @@ export default function AddExpenseScreen() {
         <Text style={{ color: '#fff' }}>{form.department}</Text>
       </TouchableOpacity>
       {deptOpen &&
-        DEPARTMENTS.map((d) => (
+        departments.map((d) => (
           <TouchableOpacity
             key={d}
             style={styles.dropdownItem}
@@ -487,7 +544,7 @@ export default function AddExpenseScreen() {
         <Text style={{ color: '#fff' }}>{form.category}</Text>
       </TouchableOpacity>
       {catOpen &&
-        CATEGORIES.map((c) => (
+        categories.map((c) => (
           <TouchableOpacity
             key={c}
             style={styles.dropdownItem}

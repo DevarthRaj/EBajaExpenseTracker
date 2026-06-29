@@ -1,112 +1,159 @@
 // ============================================================
-// History Screen — Archived budgets (editable with audit trail)
+// History Screen — Member Ledger (Contributed vs Spent)
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, TouchableOpacity,
-  Alert, RefreshControl,
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useBudgetStore } from '../store/budgetStore';
 import { useAuthStore } from '../store/authStore';
-import { Budget } from '../lib/supabaseTypes';
-import { formatDate } from '../utils/formatters';
 import { supabase } from '../lib/supabase';
 import { THEME } from '../utils/constants';
+import { formatCurrency } from '../utils/formatters';
+import { DbUser, Budget } from '../lib/supabaseTypes';
 
-interface BudgetStats {
-  expense_count: number;
-  total_spent: number;
-  total_funds: number;
+interface LedgerItem {
+  id: string;
+  name: string;
+  email: string;
+  contributed: number;
+  spent: number;
+  balance: number;
 }
 
 export default function HistoryScreen() {
-  const { budgets, fetchBudgets, unarchiveBudget, setActiveBudget } = useBudgetStore();
-  const { role } = useAuthStore();
-  const navigation = useNavigation<any>();
-  const isAdmin = role === 'admin';
+  const { budgets, activeBudget, fetchBudgets } = useBudgetStore();
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  const [users, setUsers] = useState<DbUser[]>([]);
+  const [contributions, setContributions] = useState<Record<string, number>>({});
+  const [spendings, setSpendings] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [statsMap, setStatsMap] = useState<Record<string, BudgetStats>>({});
-
-  const archived = budgets.filter((b) => b.is_archived);
+  const [budgetSelectorOpen, setBudgetSelectorOpen] = useState(false);
 
   useEffect(() => {
-    if (archived.length > 0) fetchStats(archived);
-  }, [budgets]);
+    fetchBudgets();
+    fetchUsers();
+  }, []);
 
-  const fetchStats = async (archivedBudgets: Budget[]) => {
-    const map: Record<string, BudgetStats> = {};
-    for (const b of archivedBudgets) {
-      const [{ data: expenses }, { data: funds }] = await Promise.all([
-        supabase.from('expenses').select('amount').eq('budget_id', b.id),
-        supabase.from('funds').select('amount').eq('budget_id', b.id),
-      ]);
-      map[b.id] = {
-        expense_count: expenses?.length ?? 0,
-        total_spent: (expenses ?? []).reduce((s: number, e: any) => s + e.amount, 0),
-        total_funds: (funds ?? []).reduce((s: number, f: any) => s + f.amount, 0),
-      };
+  // Sync selected budget with active budget if not set
+  useEffect(() => {
+    if (activeBudget && !selectedBudget) {
+      setSelectedBudget(activeBudget);
     }
-    setStatsMap(map);
+  }, [activeBudget]);
+
+  // Load ledger data whenever selected budget changes
+  useEffect(() => {
+    if (selectedBudget) {
+      loadLedgerData(selectedBudget.id);
+    }
+  }, [selectedBudget?.id]);
+
+  const fetchUsers = async () => {
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .order('name', { ascending: true });
+    if (data) {
+      setUsers(data as DbUser[]);
+    }
+  };
+
+  const loadLedgerData = async (budgetId: string) => {
+    setLoading(true);
+    const [{ data: fundsData }, { data: expensesData }] = await Promise.all([
+      supabase.from('funds').select('contributor_name, amount').eq('budget_id', budgetId),
+      supabase.from('expenses').select('paid_by, amount').eq('budget_id', budgetId),
+    ]);
+
+    // Aggregate contributions (key is lowercased name for fuzzy matching)
+    const contribs: Record<string, number> = {};
+    if (fundsData) {
+      fundsData.forEach((f) => {
+        const key = f.contributor_name.toLowerCase().trim();
+        contribs[key] = (contribs[key] ?? 0) + parseFloat(f.amount);
+      });
+    }
+
+    // Aggregate spendings (key is lowercased paid_by name)
+    const spends: Record<string, number> = {};
+    if (expensesData) {
+      expensesData.forEach((e) => {
+        const key = e.paid_by.toLowerCase().trim();
+        spends[key] = (spends[key] ?? 0) + parseFloat(e.amount);
+      });
+    }
+
+    setContributions(contribs);
+    setSpendings(spends);
+    setLoading(false);
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchBudgets();
+    await Promise.all([fetchBudgets(), fetchUsers()]);
+    if (selectedBudget) {
+      await loadLedgerData(selectedBudget.id);
+    }
     setRefreshing(false);
   };
 
-  const handleUnarchive = (budget: Budget) => {
-    Alert.alert('Reactivate Budget', `Reactivate "${budget.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reactivate', onPress: () => unarchiveBudget(budget.id) },
-    ]);
-  };
+  const ledgerData = useMemo<LedgerItem[]>(() => {
+    return users.map((u) => {
+      const key = u.name.toLowerCase().trim();
+      const contributed = contributions[key] ?? 0;
+      const spent = spendings[key] ?? 0;
+      const balance = contributed - spent;
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        contributed,
+        spent,
+        balance,
+      };
+    });
+  }, [users, contributions, spendings]);
 
-  const handleViewOrEdit = (budget: Budget) => {
-    setActiveBudget(budget);
-    navigation.navigate('Log');
-  };
-
-  const renderBudget = ({ item }: { item: Budget }) => {
-    const stats = statsMap[item.id];
+  const renderLedgerItem = ({ item }: { item: LedgerItem }) => {
+    const isPositive = item.balance >= 0;
     return (
-      <View style={styles.budgetCard}>
-        <View style={styles.budgetHeader}>
-          <Text style={styles.budgetName}>{item.name}</Text>
-          <View style={styles.archivedBadge}>
-            <Text style={styles.archivedText}>Archived</Text>
+      <View style={styles.ledgerCard}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.memberName}>{item.name}</Text>
+            <Text style={styles.memberEmail}>{item.email}</Text>
+          </View>
+          <View style={styles.balanceContainer}>
+            <Text style={styles.balanceLabel}>Net Balance</Text>
+            <Text
+              style={[
+                styles.balanceValue,
+                { color: isPositive ? THEME.colors.vibrantGreen : THEME.colors.textRed },
+              ]}
+            >
+              {isPositive ? '+' : ''}{formatCurrency(item.balance)}
+            </Text>
           </View>
         </View>
-        {item.year && <Text style={styles.budgetYear}>Year: {item.year}</Text>}
-        <Text style={styles.budgetDate}>Created: {formatDate(item.created_at)}</Text>
 
-        {stats && (
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statVal}>{stats.expense_count}</Text>
-              <Text style={styles.statLbl}>Expenses</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statVal}>₹{stats.total_spent.toLocaleString('en-IN')}</Text>
-              <Text style={styles.statLbl}>Spent</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statVal}>₹{stats.total_funds.toLocaleString('en-IN')}</Text>
-              <Text style={styles.statLbl}>Funds</Text>
-            </View>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Total Contributed</Text>
+            <Text style={styles.contribValue}>{formatCurrency(item.contributed)}</Text>
           </View>
-        )}
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.viewBtn} onPress={() => handleViewOrEdit(item)}>
-            <Text style={styles.viewBtnText}>View / Edit Log</Text>
-          </TouchableOpacity>
-          {isAdmin && (
-            <TouchableOpacity style={styles.unarchiveBtn} onPress={() => handleUnarchive(item)}>
-              <Text style={styles.unarchiveBtnText}>Reactivate</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Total Spent (Paid)</Text>
+            <Text style={styles.spentValue}>{formatCurrency(item.spent)}</Text>
+          </View>
         </View>
       </View>
     );
@@ -114,19 +161,63 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={archived}
-        keyExtractor={(b) => b.id}
-        renderItem={renderBudget}
-        contentContainerStyle={{ padding: 16, gap: 12 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No archived budgets.</Text>
-            <Text style={styles.emptyHint}>Archive a budget from the Budgets tab.</Text>
+      {/* Budget Selector Dropdown */}
+      <View style={styles.selectorContainer}>
+        <Text style={styles.selectorLabel}>Viewing Ledger For:</Text>
+        <TouchableOpacity
+          style={styles.dropdownTrigger}
+          onPress={() => setBudgetSelectorOpen(!budgetSelectorOpen)}
+        >
+          <Text style={styles.dropdownTriggerText}>
+            ⚡ {selectedBudget?.name ?? 'Select Budget'}
+          </Text>
+          <Text style={styles.dropdownArrow}>▼</Text>
+        </TouchableOpacity>
+
+        {budgetSelectorOpen && (
+          <View style={styles.dropdownList}>
+            {budgets.map((b) => (
+              <TouchableOpacity
+                key={b.id}
+                style={[
+                  styles.dropdownItem,
+                  b.id === selectedBudget?.id && styles.dropdownItemActive,
+                ]}
+                onPress={() => {
+                  setSelectedBudget(b);
+                  setBudgetSelectorOpen(false);
+                }}
+              >
+                <Text style={styles.dropdownItemText}>{b.name}</Text>
+                {b.is_archived && <Text style={styles.archiveTag}>Archived</Text>}
+              </TouchableOpacity>
+            ))}
           </View>
-        }
-      />
+        )}
+      </View>
+
+      {loading && ledgerData.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={THEME.colors.vibrantGreen} />
+        </View>
+      ) : (
+        <FlatList
+          data={ledgerData}
+          keyExtractor={(item) => item.id}
+          renderItem={renderLedgerItem}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#fff"
+            />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No members or budget data loaded.</Text>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -136,111 +227,155 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.deepBg,
   },
-  budgetCard: {
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContainer: {
+    padding: 16,
+    paddingTop: 8,
+    paddingBottom: 80,
+  },
+  selectorContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.glassBorder,
+    zIndex: 100,
+  },
+  selectorLabel: {
+    color: THEME.colors.textBlueLight,
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    ...THEME.styles.glassCard,
+    padding: 12,
+    borderRadius: 12,
+  },
+  dropdownTriggerText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  dropdownArrow: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 12,
+  },
+  dropdownList: {
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 12,
+    marginTop: 6,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 10, 70, 0.95)',
+    position: 'absolute',
+    top: 65,
+    left: 16,
+    right: 16,
+    zIndex: 101,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(22, 224, 76, 0.08)',
+  },
+  dropdownItemText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  archiveTag: {
+    color: '#FFB74D',
+    fontSize: 9,
+    fontWeight: '700',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 152, 0, 0.2)',
+  },
+  ledgerCard: {
     ...THEME.styles.glassCard,
     marginBottom: 12,
+    padding: 16,
   },
-  budgetHeader: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    paddingBottom: 12,
   },
-  budgetName: {
-    fontSize: 17,
-    fontWeight: '700',
+  memberName: {
     color: THEME.colors.textWhite,
-    flex: 1,
-  },
-  archivedBadge: {
-    backgroundColor: 'rgba(255, 152, 0, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 152, 0, 0.2)',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  archivedText: {
-    fontSize: 10,
-    color: '#FFB74D',
+    fontSize: 16,
     fontWeight: '700',
   },
-  budgetYear: {
-    fontSize: 13,
+  memberEmail: {
     color: THEME.colors.textBlueLight,
-    marginTop: 6,
+    fontSize: 11,
+    marginTop: 2,
   },
-  budgetDate: {
-    fontSize: 12,
+  balanceContainer: {
+    alignItems: 'flex-end',
+  },
+  balanceLabel: {
     color: THEME.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  balanceValue: {
+    fontSize: 15,
+    fontWeight: '700',
     marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
-    marginTop: 14,
-    gap: 8,
+    marginTop: 12,
+    gap: 12,
   },
-  statItem: {
+  statBox: {
     flex: 1,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,
     borderColor: THEME.colors.glassBorder,
-    padding: 8,
     borderRadius: 12,
+    padding: 10,
   },
-  statVal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.textWhite,
-  },
-  statLbl: {
-    fontSize: 10,
+  statLabel: {
     color: THEME.colors.textBlueLight,
-    marginTop: 2,
+    fontSize: 10,
+    fontWeight: '600',
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  viewBtn: {
-    flex: 2,
-    backgroundColor: THEME.colors.electricBlue,
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  viewBtnText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  unarchiveBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: THEME.colors.vibrantGreen,
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: 'rgba(22, 224, 76, 0.05)',
-  },
-  unarchiveBtnText: {
+  contribValue: {
     color: THEME.colors.vibrantGreen,
     fontSize: 13,
     fontWeight: '700',
+    marginTop: 4,
   },
-  empty: {
-    padding: 40,
-    alignItems: 'center',
+  spentValue: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
   },
   emptyText: {
-    fontSize: 15,
-    color: THEME.colors.textMuted,
-  },
-  emptyHint: {
-    fontSize: 12,
-    color: THEME.colors.textBlueLight,
-    marginTop: 8,
     textAlign: 'center',
+    color: THEME.colors.textMuted,
+    marginVertical: 40,
   },
 });
