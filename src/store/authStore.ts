@@ -3,6 +3,7 @@
 // Manages Supabase session, user profile, and role
 // ============================================================
 import { create } from 'zustand';
+import { Alert } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { DbUser, UserRole } from '../lib/supabaseTypes';
@@ -51,6 +52,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch (e: any) {
       console.error('Supabase init failed:', e);
+      Alert.alert('Init Error', e?.message ?? JSON.stringify(e));
       set({
         session: null,
         user: null,
@@ -103,6 +105,8 @@ async function fetchAndSetUser(
     .single();
 
   if (error || !userData) {
+    console.error('fetchAndSetUser error:', JSON.stringify(error));
+    Alert.alert('DB Error', error?.message ?? 'User not found in users table');
     // User authenticated but not in users table — sign them out
     await supabase.auth.signOut();
     set({
@@ -110,7 +114,7 @@ async function fetchAndSetUser(
       user: null,
       role: null,
       loading: false,
-      error: 'Your account has not been set up by an admin yet.',
+      error: error?.message ?? 'Your account has not been set up by an admin yet.',
     });
     return;
   }

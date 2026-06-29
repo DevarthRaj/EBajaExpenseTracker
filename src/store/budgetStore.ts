@@ -35,6 +35,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('fetchBudgets error:', JSON.stringify(error));
       set({ loading: false, error: error.message });
       return;
     }

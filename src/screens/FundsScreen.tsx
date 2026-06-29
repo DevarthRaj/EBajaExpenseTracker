@@ -48,11 +48,24 @@ export default function FundsScreen() {
   };
 
   const handleAdd = async () => {
-    if (!form.contributor_name.trim() || !form.amount || !activeBudget) {
-      Alert.alert('Error', 'Contributor name and amount are required.');
+    if (!activeBudget) {
+      Alert.alert('Error', 'No active budget selected. Please select a budget in the Budgets tab.');
       return;
     }
-    await addFund(activeBudget.id, form);
+    if (!form.contributor_name.trim()) {
+      Alert.alert('Error', 'Contributor name is required.');
+      return;
+    }
+    const amt = parseFloat(form.amount);
+    if (!form.amount || isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+    
+    await addFund(activeBudget.id, {
+      ...form,
+      amount: amt.toString(), // Send cleaned amount string
+    });
     setModalVisible(false);
     setForm({ contributor_name: '', amount: '', date: todayISODate(), notes: '' });
   };
@@ -81,6 +94,14 @@ export default function FundsScreen() {
       </View>
     </View>
   );
+
+  if (!activeBudget) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.colors.deepBg, padding: 24 }}>
+        <Text style={styles.empty}>No budget selected. Go to Budgets tab to create or select one.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

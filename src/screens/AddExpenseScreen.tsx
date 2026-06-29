@@ -27,6 +27,7 @@ import {
   SPLIT_MODES,
   THEME,
 } from '../utils/constants';
+import { supabase } from '../lib/supabase';
 import { todayISODate } from '../utils/formatters';
 import {
   ExpenseFormData,
@@ -82,6 +83,10 @@ export default function AddExpenseScreen() {
   const [templateModalVisible, setTemplateModalVisible] = useState(false);
   const [saveTemplateModalVisible, setSaveTemplateModalVisible] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  
+  // Dropdown states
+  const [members, setMembers] = useState<string[]>([]);
+  const [paidByOpen, setPaidByOpen] = useState(false);
 
   // Dropdowns
   const [deptOpen, setDeptOpen] = useState(false);
@@ -91,6 +96,18 @@ export default function AddExpenseScreen() {
 
   useEffect(() => {
     fetchTemplates();
+    
+    // Load members for Paid By dropdown selector
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('name')
+        .order('name', { ascending: true });
+      if (data) {
+        setMembers(data.map((m) => m.name));
+      }
+    };
+    fetchMembers();
   }, []);
 
   // Pre-fill form when editing
@@ -215,8 +232,21 @@ export default function AddExpenseScreen() {
   // ── Submit ────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!form.amount || !form.paid_by || !form.description || !activeBudget) {
-      Alert.alert('Error', 'Amount, Paid By, and Description are required.');
+    if (!activeBudget) {
+      Alert.alert('Error', 'No active budget selected. Please select a budget in the Budgets tab.');
+      return;
+    }
+    const amt = parseFloat(form.amount);
+    if (!form.amount || isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+    if (!form.paid_by || !form.paid_by.trim()) {
+      Alert.alert('Error', 'Paid By is required.');
+      return;
+    }
+    if (!form.description || !form.description.trim()) {
+      Alert.alert('Error', 'Description is required.');
       return;
     }
 
@@ -384,13 +414,40 @@ export default function AddExpenseScreen() {
 
       {/* Paid By */}
       <Text style={styles.label}>Paid By *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.paid_by}
-        onChangeText={(v) => set({ paid_by: v })}
-        placeholder="Member name"
-        placeholderTextColor="rgba(255,255,255,0.3)"
-      />
+      <View style={{ position: 'relative' }}>
+        <TextInput
+          style={[styles.input, { paddingRight: 40 }]}
+          value={form.paid_by}
+          onChangeText={(v) => set({ paid_by: v })}
+          placeholder="Select or enter member name"
+          placeholderTextColor="rgba(255,255,255,0.3)"
+        />
+        <TouchableOpacity
+          style={styles.dropdownArrow}
+          onPress={() => setPaidByOpen(!paidByOpen)}
+        >
+          <Text style={{ color: THEME.colors.vibrantGreen, fontSize: 12 }}>▼</Text>
+        </TouchableOpacity>
+      </View>
+      {paidByOpen && (
+        <View style={styles.dropdownListContainer}>
+          {members.map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={styles.dropdownItem}
+              onPress={() => {
+                set({ paid_by: m });
+                setPaidByOpen(false);
+              }}
+            >
+              <Text style={{ color: '#fff' }}>{m}</Text>
+            </TouchableOpacity>
+          ))}
+          {members.length === 0 && (
+            <Text style={styles.emptyDropdownText}>No members found</Text>
+          )}
+        </View>
+      )}
 
       {/* Description */}
       <Text style={styles.label}>Description *</Text>
@@ -802,5 +859,27 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#000',
     fontWeight: '700',
+  },
+  dropdownArrow: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  dropdownListContainer: {
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 12,
+    marginTop: 4,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 10, 70, 0.95)',
+  },
+  emptyDropdownText: {
+    color: THEME.colors.textMuted,
+    padding: 12,
+    textAlign: 'center',
+    fontSize: 13,
   },
 });
