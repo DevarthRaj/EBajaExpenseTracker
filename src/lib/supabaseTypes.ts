@@ -17,7 +17,7 @@ export interface DbUser {
 export interface Budget {
   id: string;
   name: string;
-  year: string | null;
+  limit_amount: number;
   is_archived: boolean;
   created_by: string | null;
   created_at: string;

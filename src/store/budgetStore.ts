@@ -15,7 +15,7 @@ interface BudgetState {
   // Actions
   fetchBudgets: () => Promise<void>;
   setActiveBudget: (budget: Budget) => void;
-  createBudget: (name: string, year: string) => Promise<void>;
+  createBudget: (name: string, limitAmount: number) => Promise<void>;
   archiveBudget: (id: string) => Promise<void>;
   unarchiveBudget: (id: string) => Promise<void>;
 }
@@ -56,12 +56,12 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
     set({ activeBudget: budget });
   },
 
-  createBudget: async (name: string, year: string) => {
+  createBudget: async (name: string, limitAmount: number) => {
     set({ loading: true, error: null });
 
     const { data, error } = await supabase
       .from('budgets')
-      .insert({ name, year })
+      .insert({ name, limit_amount: limitAmount })
       .select()
       .single();
 

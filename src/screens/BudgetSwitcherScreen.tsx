@@ -18,8 +18,8 @@ export default function BudgetSwitcherScreen() {
   const isAdmin = role === 'admin';
 
   const [newBudgetModal, setNewBudgetModal] = useState(false);
-  const [budgetName, setBudgetName] = useState('');
-  const [budgetYear, setBudgetYear] = useState(String(new Date().getFullYear()));
+  const [deptName, setDeptName] = useState('');
+  const [budgetLimit, setBudgetLimit] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -33,13 +33,19 @@ export default function BudgetSwitcherScreen() {
   };
 
   const handleCreate = async () => {
-    if (!budgetName.trim()) {
-      Alert.alert('Error', 'Enter a budget name.');
+    if (!deptName.trim()) {
+      Alert.alert('Error', 'Enter department name.');
       return;
     }
-    await createBudget(budgetName.trim(), budgetYear.trim());
+    const amt = parseFloat(budgetLimit);
+    if (!budgetLimit || isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Enter a valid budget limit greater than 0.');
+      return;
+    }
+    await createBudget(deptName.trim(), amt);
     setNewBudgetModal(false);
-    setBudgetName('');
+    setDeptName('');
+    setBudgetLimit('');
   };
 
   const handleArchive = (budget: Budget) => {
@@ -54,19 +60,19 @@ export default function BudgetSwitcherScreen() {
   const renderBudget = ({ item }: { item: Budget }) => {
     const isActive = activeBudget?.id === item.id;
     return (
-      <TouchableOpacity
-        style={[styles.budgetRow, isActive && styles.budgetRowActive]}
-        onPress={() => setActiveBudget(item)}
-      >
-        <View style={styles.budgetInfo}>
+      <View style={[styles.budgetRow, isActive && styles.budgetRowActive]}>
+        <TouchableOpacity
+          style={styles.budgetInfo}
+          onPress={() => setActiveBudget(item)}
+        >
           <Text style={[styles.budgetName, isActive && styles.budgetNameActive]}>
             {item.name}
           </Text>
-          {item.year && (
-            <Text style={styles.budgetMeta}>Year: {item.year}</Text>
-          )}
+          <Text style={styles.budgetMeta}>
+            Max Budget: ₹{item.limit_amount.toLocaleString('en-IN')}
+          </Text>
           <Text style={styles.budgetMeta}>Created: {formatDate(item.created_at)}</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.budgetActions}>
           {isActive && (
             <View style={styles.activeBadge}>
@@ -79,7 +85,7 @@ export default function BudgetSwitcherScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -119,24 +125,24 @@ export default function BudgetSwitcherScreen() {
       <Modal visible={newBudgetModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Create New Budget</Text>
+            <Text style={styles.modalTitle}>Create New Department Budget</Text>
 
-            <Text style={styles.label}>Budget Name *</Text>
+            <Text style={styles.label}>Department Name *</Text>
             <TextInput
               style={styles.input}
-              value={budgetName}
-              onChangeText={setBudgetName}
-              placeholder="e.g. Regionals 2026"
+              value={deptName}
+              onChangeText={setDeptName}
+              placeholder="e.g. Powertrain"
               placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
-            <Text style={styles.label}>Year</Text>
+            <Text style={styles.label}>Budget Amount (₹) *</Text>
             <TextInput
               style={styles.input}
-              value={budgetYear}
-              onChangeText={setBudgetYear}
+              value={budgetLimit}
+              onChangeText={setBudgetLimit}
               keyboardType="numeric"
-              placeholder="2026"
+              placeholder="e.g. 50000"
               placeholderTextColor="rgba(255,255,255,0.3)"
             />
 
@@ -192,10 +198,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   budgetRow: {
-    ...THEME.styles.glassCard,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    ...THEME.styles.glassCard,
+    marginBottom: 12,
+    padding: 16,
   },
   budgetRowActive: {
     borderColor: THEME.colors.electricBlue,
@@ -312,5 +320,61 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#000',
     fontWeight: '700',
+  },
+
+  setBudgetsBtn: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: THEME.colors.glassBorder,
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginTop: 4,
+  },
+  setBudgetsBtnText: {
+    color: THEME.colors.vibrantGreen,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  limitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  limitLabel: {
+    fontSize: 14,
+    color: THEME.colors.textWhite,
+    flex: 1,
+  },
+  limitVal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.vibrantGreen,
+    marginRight: 12,
+  },
+  deleteLimitBtn: {
+    fontSize: 14,
+    padding: 4,
+  },
+  addLimitForm: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  addLimitBtn: {
+    backgroundColor: THEME.colors.vibrantGreen,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addLimitBtnText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

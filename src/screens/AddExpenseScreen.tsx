@@ -2,7 +2,7 @@
 // Add Expense Screen (also handles Edit mode)
 // Admin only
 // ============================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -136,14 +136,21 @@ export default function AddExpenseScreen() {
   }, [activeBudget?.id]);
 
   // Set default values once config loaded
+  const departmentOptions = useMemo(() => {
+    if (deptLimits.length > 0) {
+      return deptLimits.map((l) => l.department);
+    }
+    return departments;
+  }, [deptLimits, departments]);
+
   useEffect(() => {
-    if (departments.length > 0 && !form.department) {
-      set({ department: departments[0] });
+    if (departmentOptions.length > 0 && !form.department) {
+      set({ department: departmentOptions[0] });
     }
     if (categories.length > 0 && !form.category) {
       set({ category: categories[0] });
     }
-  }, [departments, categories]);
+  }, [departmentOptions, categories]);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -174,7 +181,7 @@ export default function AddExpenseScreen() {
 
   const initSplits = (mode: SplitMode) => {
     if (mode === 'department') {
-      const splits: SplitEntry[] = departments.map((d) => ({
+      const splits: SplitEntry[] = departmentOptions.map((d: string) => ({
         key: d,
         label: d,
         amount: '',
@@ -525,7 +532,7 @@ export default function AddExpenseScreen() {
         <Text style={{ color: '#fff' }}>{form.department}</Text>
       </TouchableOpacity>
       {deptOpen &&
-        departments.map((d) => (
+        departmentOptions.map((d: string) => (
           <TouchableOpacity
             key={d}
             style={styles.dropdownItem}
